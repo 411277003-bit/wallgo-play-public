@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>牆壁戰棋 (Wall Go) - 戰鬥中</title>
+    <style>
+        :root {
+            --cell-size: 50px;
+            --wall-thickness: 15px;
+            --color-red: #e74c3c;
+            --color-blue: #3498db;
+            --color-yellow: #f1c40f;
+            --color-green: #2ecc71; 
+            --color-highlight: rgba(46, 204, 113, 0.6);
+            --color-highlight-wall: rgba(241, 196, 15, 0.8);
+            --bg-color: #f0f2f5;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; align-items: center; background-color: var(--bg-color); margin: 0; padding: 20px; min-height: 100vh;
+        }
+
+        .status-panel { text-align: center; margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 550px; }
+        .status-panel h2 { margin: 0 0 10px 0; }
+        .status-panel p { margin: 0; color: #7f8c8d; font-size: 14px; font-weight: bold; line-height: 1.5; }
+        
+        .timer-container { display: flex; justify-content: center; gap: 15px; margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; }
+        .timer-box { padding: 8px 12px; border-radius: 5px; font-weight: bold; font-size: 16px; background: white; border: 2px solid #bdc3c7; transition: 0.3s; }
+        .timer-active { border-color: #e74c3c; background: #fff0f0; transform: scale(1.05); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
+
+        .breaker-status { font-size: 13px; color: #95a5a6; margin-top: 8px; }
+
+        .board { display: grid; background-color: #bdc3c7; padding: 10px; border-radius: 8px; grid-template-columns: repeat(6, var(--cell-size) var(--wall-thickness)) var(--cell-size); grid-template-rows: repeat(6, var(--cell-size) var(--wall-thickness)) var(--cell-size); width: max-content; }
+        .grid-item { display: flex; justify-content: center; align-items: center; transition: background-color 0.2s; }
+        .cell { background-color: white; border-radius: 4px; cursor: pointer; }
+        .cell:hover { background-color: #ecf0f1; }
+        .wall-h, .wall-v { cursor: pointer; border-radius: 2px; }
+        .intersection { background-color: transparent; }
+
+        .piece { border-radius: 50%; width: 80%; height: 80%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.2s; pointer-events: none; }
+        .piece-red { background-color: var(--color-red); }
+        .piece-blue { background-color: var(--color-blue); }
+        .piece-yellow { background-color: var(--color-yellow); }
+        .piece-green { background-color: var(--color-green); }
+
+        .wall-placed { cursor: default; }
+        .wall-red { background-color: var(--color-red) !important; }
+        .wall-blue { background-color: var(--color-blue) !important; }
+        .wall-yellow { background-color: var(--color-yellow) !important; }
+        .wall-green { background-color: var(--color-green) !important; }
+
+        .territory-red { background-color: rgba(231, 76, 60, 0.3) !important; }
+        .territory-blue { background-color: rgba(52, 152, 219, 0.3) !important; }
+        .territory-yellow { background-color: rgba(241, 196, 15, 0.3) !important; }
+        .territory-green { background-color: rgba(46, 204, 113, 0.3) !important; }
+
+        .highlight { background-color: var(--color-highlight) !important; cursor: pointer; opacity: 0.8; }
+        .highlight-wall { background-color: var(--color-highlight-wall) !important; cursor: pointer; opacity: 0.8; }
+        .selected { transform: scale(1.15); border: 3px solid #2c3e50; }
+
+        .controls { margin-top: 20px; display: flex; gap: 10px; align-items: center; }
+        button { padding: 10px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 5px; background-color: #2c3e50; color: white; cursor: pointer; transition: 0.2s; }
+        button:hover { background-color: #1a252f; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        .btn-action { background-color: #e67e22; }
+        .btn-action:hover { background-color: #d35400; }
+        .btn-back { background-color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+    <div class="status-panel">
+        <h2 id="turn-display">當前回合：載入中...</h2>
+        <p id="instruction-display">請執行動作</p>
+        <div id="timer-container" class="timer-container"></div>
+        <div id="breaker-display" class="breaker-status"></div>
+    </div>
+
+    <div id="game-board" class="board"></div>
+
+    <div class="controls">
+        <button id="btn-breaker" class="btn-action" onclick="toggleWallBreaker()">使用破牆者</button>
+        <button onclick="resetGame()">重新開始</button>
+        <button class="btn-back" onclick="backToMenu()">回主選單</button>
+    </div>
+
+    <script>
+        const boardSize = 13; 
+        let phase = 'placement'; 
+        
+        // --- 🤖 AI 模式設定 ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramPlayers = urlParams.get('players');
+        const isVsAI = (paramPlayers === 'ai'); 
+        let playerCount = isVsAI ? 2 : (parseInt(paramPlayers) || 3);
+        let aiColor = isVsAI ? 'blue' : null; // AI 固定為藍色
+        let isProcessing = false; // 用於鎖定玩家點擊，防護 AI 思考期間
+        // ----------------------
+
+        const allColors = ['red', 'blue', 'yellow', 'green'];
+        let activeColors = [];
+        let placementQueue = [];
+        let movementOrder = [];
+        let turnIndex = 0;
+        let pieces = []; 
+        let walls = new Map(); 
+        let playersInfo = {};
+        let stepsTaken = 0;
+        let territories = new Map(); 
+        
+        const TURN_TIME_LIMIT = 90; 
+        let playerTimes = {}; 
+        let clockInterval = null;
+        let selectedPieceIndex = -1; 
+        let movedPieceIndex = -1; 
+
+        const boardEl = document.getElementById('game-board');
+        const turnDisplay = document.getElementById('turn-display');
+        const instructionDisplay = document.getElementById('instruction-display');
+        const timerContainer = document.getElementById('timer-container');
+        const breakerDisplay = document.getElementById('breaker-display');
+        const btnBreaker = document.getElementById('btn-breaker');
+
+        const colorMap = {
+            'red': { text: '紅色 (你)', color: 'var(--color-red)', icon: '🔴' },
+            'blue': { text: isVsAI ? '藍色 (AI機器人)' : '藍色', color: 'var(--color-blue)', icon: '🔵' },
+            'yellow': { text: '黃色', color: 'var(--color-yellow)', icon: '🟡' },
+            'green': { text: '綠色', color: 'var(--color-green)', icon: '🟢' }
+        };
+
+        if (!isVsAI) colorMap['red'].text = '紅色';
+
+        function backToMenu() { window.location.href = 'index.html'; }
+
+        function resetGame() {
+            clearInterval(clockInterval);
+            activeColors = allColors.slice(0, playerCount);
+            placementQueue = [...activeColors, ...[...activeColors].reverse()];
+            movementOrder = [...activeColors];
+            pieces = []; walls.clear(); territories.clear(); playersInfo = {}; playerTimes = {};
+            
+            activeColors.forEach(c => {
+                playersInfo[c] = { hasBreaker: true };
+                playerTimes[c] = TURN_TIME_LIMIT;
+            });
+
+            phase = 'placement'; turnIndex = 0; selectedPieceIndex = -1; movedPieceIndex = -1; stepsTaken = 0; 
+            isProcessing = false;
+            initBoard();
+            startClock(); 
+            checkAITurn(); // 檢查首回合是否為 AI
+        }
+
+        function initBoard() {
+            boardEl.innerHTML = '';
+            for (let r = 0; r < boardSize; r++) {
+                for (let c = 0; c < boardSize; c++) {
+                    const div = document.createElement('div');
+                    div.classList.add('grid-item'); div.dataset.r = r; div.dataset.c = c;
+                    if (r % 2 === 0 && c % 2 === 0) {
+                        div.classList.add('cell'); div.onclick = () => handleCellClick(r, c);
+                    } else if (r % 2 !== 0 && c % 2 === 0) {
+                        div.classList.add('wall-h'); div.onclick = () => handleWallClick(r, c);
+                    } else if (r % 2 === 0 && c % 2 !== 0) {
+                        div.classList.add('wall-v'); div.onclick = () => handleWallClick(r, c);
+                    } else div.classList.add('intersection');
+                    boardEl.appendChild(div);
+                }
+            }
+            render();
+        }
+
+        function startClock() {
+            clearInterval(clockInterval);
+            if (phase === 'game_over') return;
+            clockInterval = setInterval(() => {
+                let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
+                playerTimes[currentColor]--; 
+                updateUI(); 
+                if (playerTimes[currentColor] <= 0) {
+                    clearInterval(clockInterval); 
+                    setTimeout(() => {
+                        alert(`⏳ 時間耗盡！系統已自動為 ${colorMap[currentColor].text} 隨機執行動作並跳過回合。`);
+                        executeAILogic(currentColor); 
+                    }, 50);
+                }
+            }, 1000);
+        }
+
+        function resetCurrentPlayerTimer() {
+            if (phase === 'game_over') return;
+            let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
+            playerTimes[currentColor] = TURN_TIME_LIMIT;
+        }
+
+        // --- 🤖 AI 核心邏輯 / AFK 自動代管 ---
+        function executeAILogic(color) {
+            if (phase === 'placement') {
+                // 放置期：隨機選空格放置
+                let emptyCells = [];
+                for (let r = 0; r < boardSize; r += 2) {
+                    for (let c = 0; c < boardSize; c += 2) {
+                        if (getPieceIndexAt(r, c) === -1) emptyCells.push({r, c});
+                    }
+                }
+                if (emptyCells.length > 0) {
+                    let rand = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                    pieces.push({ color: placementQueue[turnIndex], r: rand.r, c: rand.c });
+                }
+                turnIndex++;
+                if (turnIndex >= placementQueue.length) { phase = 'movement'; turnIndex = 0; }
+            } else if (phase === 'wall_building') {
+                // 若超時代管發生在建牆期
+                let possibleWalls = getValidWalls(pieces[movedPieceIndex].r, pieces[movedPieceIndex].c);
+                if (possibleWalls.length > 0) {
+                    let w = possibleWalls[Math.floor(Math.random() * possibleWalls.length)];
+                    walls.set(`${w.r},${w.c}`, color);
+                }
+                movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
+                turnIndex = (turnIndex + 1) % movementOrder.length;
+            } else {
+                // 行動期：
+                // 1. 小機率使用破牆者
+                if (playersInfo[color].hasBreaker && walls.size > 0 && Math.random() < 0.15) {
+                    let wallKeys = Array.from(walls.keys());
+                    walls.delete(wallKeys[Math.floor(Math.random() * wallKeys.length)]);
+                    playersInfo[color].hasBreaker = false;
+                }
+
+                // 2. 窮舉所有「合法移動 + 建牆」的組合並隨機挑選
+                let validActions = [];
+                let myPieces = pieces.filter(p => p.color === color);
+                myPieces.forEach(p => {
+                    let moves = getValidMoves(p.r, p.c);
+                    moves.forEach(m => {
+                        let oldR = p.r; let oldC = p.c;
+                        p.r = m.r; p.c = m.c; // 假裝移動過去
+                        let vWalls = getValidWalls(m.r, m.c); // 取得該處合法牆壁
+                        vWalls.forEach(w => {
+                            validActions.push({ pIdx: pieces.indexOf(p), mr: m.r, mc: m.c, wr: w.r, wc: w.c });
+                        });
+                        p.r = oldR; p.c = oldC; // 復原
+                    });
+                });
+
+                if (validActions.length > 0) {
+                    let action = validActions[Math.floor(Math.random() * validActions.length)];
+                    pieces[action.pIdx].r = action.mr;
+                    pieces[action.pIdx].c = action.mc;
+                    walls.set(`${action.wr},${action.wc}`, color);
+                }
+                
+                movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
+                turnIndex = (turnIndex + 1) % movementOrder.length;
+            }
+
+            resetCurrentPlayerTimer(); 
+            autoCheckEndGame(false); 
+            render();
+            checkAITurn(); 
+        }
+
+        // --- 檢查是否輪到 AI 進行回合 ---
+        function checkAITurn() {
+            if (phase === 'game_over') { isProcessing = false; return; }
+            let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
+            
+            if (isVsAI && currentColor === aiColor) {
+                isProcessing = true; // 鎖定人類點擊
+                instructionDisplay.innerText = "🤖 AI 正在思考最佳路徑...";
+                // 給予 0.8 秒延遲，營造思考的感覺，且不會瞬間發生讓人看不懂
+                setTimeout(() => {
+                    executeAILogic(currentColor);
+                }, 800);
+            } else {
+                isProcessing = false; // 解除鎖定，輪到人類
+            }
+        }
+
+        function render() {
+            document.querySelectorAll('.grid-item').forEach(el => {
+                el.innerHTML = '';
+                el.classList.remove('highlight', 'highlight-wall', 'wall-placed', 'selected', 'wall-red', 'wall-blue', 'wall-yellow', 'wall-green', 'territory-red', 'territory-blue', 'territory-yellow', 'territory-green');
+            });
+
+            walls.forEach((color, wKey) => {
+                const [wr, wc] = wKey.split(',').map(Number);
+                const wEl = getEl(wr, wc);
+                if (wEl) wEl.classList.add('wall-placed', `wall-${color}`);
+            });
+
+            if (phase === 'game_over') {
+                territories.forEach((color, tKey) => {
+                    const [tr, tc] = tKey.split(',').map(Number);
+                    const tEl = getEl(tr, tc);
+                    if (tEl) tEl.classList.add(`territory-${color}`);
+                });
+            }
+
+            pieces.forEach((p, index) => {
+                const cell = getEl(p.r, p.c);
+                if (cell) {
+                    const pieceDiv = document.createElement('div');
+                    pieceDiv.classList.add('piece', `piece-${p.color}`);
+                    if (index === selectedPieceIndex || index === movedPieceIndex) {
+                        pieceDiv.classList.add('selected');
+                    }
+                    cell.appendChild(pieceDiv);
+                }
+            });
+
+            if (phase === 'movement' && selectedPieceIndex !== -1) {
+                const p = pieces[selectedPieceIndex];
+                getValidMoves(p.r, p.c).forEach(m => getEl(m.r, m.c)?.classList.add('highlight'));
+            } else if (phase === 'wall_building') {
+                const p = pieces[movedPieceIndex];
+                getValidWalls(p.r, p.c).forEach(m => getEl(m.r, m.c)?.classList.add('highlight-wall'));
+            } else if (phase === 'wall_breaking') {
+                walls.forEach((color, wKey) => {
+                    const [wr, wc] = wKey.split(',').map(Number);
+                    getEl(wr, wc)?.classList.add('highlight-wall');
+                });
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            let currentColor = phase === 'game_over' ? null : (phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex]);
+            
+            timerContainer.innerHTML = '';
+            activeColors.forEach(c => {
+                const isCurrent = (c === currentColor);
+                const tBox = document.createElement('div');
+                tBox.className = `timer-box ${isCurrent ? 'timer-active' : ''}`;
+                tBox.style.color = colorMap[c].color;
+                tBox.innerText = `${colorMap[c].icon} ${playerTimes[c]}s`;
+                timerContainer.appendChild(tBox);
+            });
+
+            if (phase === 'game_over') {
+                turnDisplay.innerText = `🏆 遊戲結束`; turnDisplay.style.color = '#2c3e50';
+                instructionDisplay.innerText = "所有陣營已完全封閉，請查看結算分數！"; btnBreaker.disabled = true; return;
+            }
+
+            if(isProcessing && isVsAI && currentColor === aiColor) return; // AI 回合中不更新下方提示
+
+            let phaseText = phase === 'placement' ? '放置階段' : phase === 'movement' ? '移動階段' : phase === 'wall_building' ? '建牆階段 (必須相鄰建牆)' : '破牆階段';
+            turnDisplay.innerText = `當前回合：${colorMap[currentColor].text} (${phaseText})`;
+            turnDisplay.style.color = colorMap[currentColor].color;
+
+            if (phase === 'placement') instructionDisplay.innerText = "請點擊空白棋格放置棋子";
+            else if (phase === 'movement') instructionDisplay.innerText = selectedPieceIndex === -1 ? "請選擇你的棋子，或使用破牆者" : `請點擊高亮綠格移動 (已走 ${stepsTaken} / 2 步)\n若不想繼續移動，請「再次點擊自己的棋子」確認完成`;
+            else if (phase === 'wall_building') instructionDisplay.innerText = "請在剛移動的棋子四周放置一道牆";
+            else if (phase === 'wall_breaking') instructionDisplay.innerText = "請選擇場上一道牆將其拆除";
+
+            let statusArray = activeColors.map(c => `${colorMap[c].text}(${playersInfo[c].hasBreaker?"可":"無"})`);
+            breakerDisplay.innerText = `破牆者：` + statusArray.join(" | ");
+            btnBreaker.disabled = (phase !== 'movement' || stepsTaken > 0 || !playersInfo[currentColor].hasBreaker);
+        }
+
+        function handleCellClick(r, c) {
+            // 🛑 阻擋機制：遊戲結束、正在計算，或者是 AI 的回合，人類皆不可亂點
+            if (phase === 'game_over' || isProcessing) return; 
+            let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
+            if (isVsAI && currentColor === aiColor) return;
+
+            if (phase === 'placement') {
+                if (getPieceIndexAt(r, c) !== -1) return;
+                pieces.push({ color: placementQueue[turnIndex], r, c });
+                turnIndex++;
+                if (turnIndex >= placementQueue.length) { phase = 'movement'; turnIndex = 0; }
+                resetCurrentPlayerTimer(); 
+                render();
+                checkAITurn(); // 檢查下家是否為 AI
+            } else if (phase === 'movement') {
+                const clickedPieceIndex = getPieceIndexAt(r, c);
+
+                if (selectedPieceIndex === -1) {
+                    if (clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor) {
+                        selectedPieceIndex = clickedPieceIndex; stepsTaken = 0; render();
+                    }
+                } else {
+                    if (stepsTaken === 0 && clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor && clickedPieceIndex !== selectedPieceIndex) {
+                        selectedPieceIndex = clickedPieceIndex; render(); return;
+                    }
+
+                    const p = pieces[selectedPieceIndex];
+                    const isValid = getValidMoves(p.r, p.c).some(m => m.r === r && m.c === c);
+
+                    if (isValid) {
+                        if (p.r === r && p.c === c) {
+                            movedPieceIndex = selectedPieceIndex; selectedPieceIndex = -1; stepsTaken = 0; phase = 'wall_building';
+                        } else {
+                            pieces[selectedPieceIndex].r = r; pieces[selectedPieceIndex].c = c; stepsTaken++;
+                            if (stepsTaken >= 2) {
+                                movedPieceIndex = selectedPieceIndex; selectedPieceIndex = -1; stepsTaken = 0; phase = 'wall_building';
+                            }
+                        }
+                    } else if (stepsTaken === 0) selectedPieceIndex = -1;
+                    render();
+                }
+            }
+        }
+
+        function handleWallClick(r, c) {
+            if (phase === 'game_over' || isProcessing) return; 
+            let currentColorCheck = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
+            if (isVsAI && currentColorCheck === aiColor) return;
+
+            if (phase === 'wall_building') {
+                const currentColor = pieces[movedPieceIndex].color; 
+                const isValid = getValidWalls(pieces[movedPieceIndex].r, pieces[movedPieceIndex].c).some(w => w.r === r && w.c === c);
+                if (isValid && !walls.has(`${r},${c}`)) {
+                    walls.set(`${r},${c}`, currentColor); 
+                    endTurn(); 
+                }
+            } else if (phase === 'wall_breaking') {
+                if (walls.has(`${r},${c}`)) {
+                    walls.delete(`${r},${c}`);
+                    const currentColor = movementOrder[turnIndex];
+                    playersInfo[currentColor].hasBreaker = false; 
+                    phase = 'movement'; 
+                    autoCheckEndGame(false); 
+                    render();
+                }
+            }
+        }
+
+        function toggleWallBreaker() {
+            if (isProcessing) return;
+            if (phase === 'movement' && stepsTaken === 0) {
+                if (walls.size === 0) return alert("場上目前沒有牆壁可供拆除！");
+                phase = 'wall_breaking'; selectedPieceIndex = -1; render();
+            }
+        }
+
+        function endTurn() {
+            movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
+            turnIndex = (turnIndex + 1) % movementOrder.length;
+            resetCurrentPlayerTimer(); 
+            autoCheckEndGame(false); 
+            render();
+            checkAITurn(); // 檢查下家是否為 AI
+        }
+
+        //演算法
+        function getValidMoves(startR, startC) {
+            const validMoves = [];
+            for (let r = 0; r < boardSize; r += 2) {
+                for (let c = 0; c < boardSize; c += 2) {
+                    const dr = Math.abs(startR - r); const dc = Math.abs(startC - c);
+                    if ((dr === 2 && dc === 0) || (dr === 0 && dc === 2) || (dr === 0 && dc === 0)) {
+                        if (getPieceIndexAt(r, c) === -1 || (r === startR && c === startC)) {
+                            if (!hasWallBetween(startR, startC, r, c)) validMoves.push({ r, c });
+                        }
+                    }
+                }
+            }
+            return validMoves;
+        }
+
+        function hasWallBetween(r1, c1, r2, c2) {
+            if (r1 === r2 && c1 === c2) return false;
+            const wallR = (r1 + r2) / 2; const wallC = (c1 + c2) / 2;
+            return walls.has(`${wallR},${wallC}`);
+        }
+
+        function getValidWalls(pR, pC) {
+            const validWalls = [];
+            const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (let [dr, dc] of dirs) {
+                const wr = pR + dr, wc = pC + dc;
+                if (wr >= 0 && wr < boardSize && wc >= 0 && wc < boardSize && !walls.has(`${wr},${wc}`)) validWalls.push({ r: wr, c: wc });
+            }
+            return validWalls;
+        }
+
+        //BFS結算與紀錄儲存
+        function autoCheckEndGame(forceCalculate = false) {
+            if (phase === 'placement' && !forceCalculate) return;
+            let gameOver = forceCalculate; 
+            let scores = {}; activeColors.forEach(c => scores[c] = 0);
+            let visited = new Set(); let hasMixedTerritory = false; 
+            territories.clear(); 
+
+            for (let r = 0; r < boardSize; r += 2) {
+                for (let c = 0; c < boardSize; c += 2) {
+                    if (visited.has(`${r},${c}`)) continue;
+                    let queue = [{r, c}]; visited.add(`${r},${c}`);
+                    let regionSize = 0; let colorsInRegion = new Set(); let regionCells = []; 
+
+                    while(queue.length > 0) {
+                        const curr = queue.shift(); regionSize++; regionCells.push(curr); 
+                        const pieceIdx = getPieceIndexAt(curr.r, curr.c);
+                        if (pieceIdx !== -1) colorsInRegion.add(pieces[pieceIdx].color);
+
+                        const dirs = [[-2, 0, -1, 0], [2, 0, 1, 0], [0, -2, 0, -1], [0, 2, 0, 1]];
+                        for (const [dr, dc, wr, wc] of dirs) {
+                            const nr = curr.r + dr, nc = curr.c + dc; const w_r = curr.r + wr, w_c = curr.c + wc;
+                            if (nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize && !walls.has(`${w_r},${w_c}`) && !visited.has(`${nr},${nc}`)) {
+                                visited.add(`${nr},${nc}`); queue.push({r: nr, c: nc});
+                            }
+                        }
+                    }
+                    if (colorsInRegion.size > 1) hasMixedTerritory = true; 
+                    else if (colorsInRegion.size === 1) {
+                        const color = Array.from(colorsInRegion)[0];
+                        scores[color] += regionSize;
+                        regionCells.forEach(cell => territories.set(`${cell.r},${cell.c}`, color));
+                    }
+                }
+            }
+
+            let anyPlayerCanMove = false;
+            if (!gameOver) {
+                for (const color of activeColors) {
+                    if (playersInfo[color].hasBreaker && walls.size > 0) { anyPlayerCanMove = true; break; }
+                    const playerPieces = pieces.filter(p => p.color === color);
+                    for (const p of playerPieces) {
+                        const moves = getValidMoves(p.r, p.c);
+                        for (const m of moves) {
+                            if (getValidWalls(m.r, m.c).length > 0) { anyPlayerCanMove = true; break; }
+                        }
+                        if (anyPlayerCanMove) break;
+                    }
+                    if (anyPlayerCanMove) break;
+                }
+                if (!hasMixedTerritory || !anyPlayerCanMove) gameOver = true;
+            }
+
+            if (gameOver) {
+                clearInterval(clockInterval); phase = 'game_over'; isProcessing = false; render();
+                let reason = forceCalculate ? "因有玩家單步思考超時而強制提前結算" : (!anyPlayerCanMove ? "所有玩家皆無法再進行合法操作 (僵局)" : "所有陣營已被完全封閉切割");
+                let scoreText = activeColors.map(c => `${colorMap[c].icon} ${colorMap[c].text}領土：${scores[c]} 格`).join('\n');
+                
+                let maxScore = -1; let winners = [];
+                activeColors.forEach(c => {
+                    if (scores[c] > maxScore) { maxScore = scores[c]; winners = [colorMap[c].text]; } 
+                    else if (scores[c] === maxScore) winners.push(colorMap[c].text); 
+                });
+                
+                const historyRecord = {
+                    date: new Date().toLocaleString('zh-TW'),
+                    winner: winners.join(' & '), 
+                    winScore: maxScore,
+                    details: activeColors.map(c => `${colorMap[c].text[0]}:${scores[c]}`).join(' | ')
+                };
+                
+                const pastHistory = JSON.parse(localStorage.getItem('wallGoHistory') || '[]');
+                pastHistory.push(historyRecord);
+                localStorage.setItem('wallGoHistory', JSON.stringify(pastHistory));
+                setTimeout(() => { alert(`🏆 遊戲結束！${reason}。\n\n${scoreText}`); }, 150);
+            }
+        }
+
+        function getEl(r, c) { return document.querySelector(`[data-r="${r}"][data-c="${c}"]`); }
+        function getPieceIndexAt(r, c) { return pieces.findIndex(p => p.r === r && p.c === c); }
+
+        resetGame();
+    </script>
+</body>
+</html>
