@@ -211,5 +211,4 @@ def handle_friend_request():
     return jsonify({"success": False, "message": "無效的操作"})
 
 if __name__ == '__main__':
-    # 這是本地測試用的設定
     app.run(host='0.0.0.0', port=5000, debug=True)
