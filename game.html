@@ -199,7 +199,6 @@
         // --- 🤖 AI 核心邏輯 / AFK 自動代管 ---
         function executeAILogic(color) {
             if (phase === 'placement') {
-                // 放置期：隨機選空格放置
                 let emptyCells = [];
                 for (let r = 0; r < boardSize; r += 2) {
                     for (let c = 0; c < boardSize; c += 2) {
@@ -213,7 +212,6 @@
                 turnIndex++;
                 if (turnIndex >= placementQueue.length) { phase = 'movement'; turnIndex = 0; }
             } else if (phase === 'wall_building') {
-                // 若超時代管發生在建牆期
                 let possibleWalls = getValidWalls(pieces[movedPieceIndex].r, pieces[movedPieceIndex].c);
                 if (possibleWalls.length > 0) {
                     let w = possibleWalls[Math.floor(Math.random() * possibleWalls.length)];
@@ -222,27 +220,24 @@
                 movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             } else {
-                // 行動期：
-                // 1. 小機率使用破牆者
                 if (playersInfo[color].hasBreaker && walls.size > 0 && Math.random() < 0.15) {
                     let wallKeys = Array.from(walls.keys());
                     walls.delete(wallKeys[Math.floor(Math.random() * wallKeys.length)]);
                     playersInfo[color].hasBreaker = false;
                 }
 
-                // 2. 窮舉所有「合法移動 + 建牆」的組合並隨機挑選
                 let validActions = [];
                 let myPieces = pieces.filter(p => p.color === color);
                 myPieces.forEach(p => {
                     let moves = getValidMoves(p.r, p.c);
                     moves.forEach(m => {
                         let oldR = p.r; let oldC = p.c;
-                        p.r = m.r; p.c = m.c; // 假裝移動過去
-                        let vWalls = getValidWalls(m.r, m.c); // 取得該處合法牆壁
+                        p.r = m.r; p.c = m.c; 
+                        let vWalls = getValidWalls(m.r, m.c); 
                         vWalls.forEach(w => {
                             validActions.push({ pIdx: pieces.indexOf(p), mr: m.r, mc: m.c, wr: w.r, wc: w.c });
                         });
-                        p.r = oldR; p.c = oldC; // 復原
+                        p.r = oldR; p.c = oldC; 
                     });
                 });
 
@@ -269,14 +264,13 @@
             let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
             
             if (isVsAI && currentColor === aiColor) {
-                isProcessing = true; // 鎖定人類點擊
+                isProcessing = true; 
                 instructionDisplay.innerText = "🤖 AI 正在思考最佳路徑...";
-                // 給予 0.8 秒延遲，營造思考的感覺，且不會瞬間發生讓人看不懂
                 setTimeout(() => {
                     executeAILogic(currentColor);
                 }, 800);
             } else {
-                isProcessing = false; // 解除鎖定，輪到人類
+                isProcessing = false; 
             }
         }
 
@@ -345,7 +339,7 @@
                 instructionDisplay.innerText = "所有陣營已完全封閉，請查看結算分數！"; btnBreaker.disabled = true; return;
             }
 
-            if(isProcessing && isVsAI && currentColor === aiColor) return; // AI 回合中不更新下方提示
+            if(isProcessing && isVsAI && currentColor === aiColor) return; 
 
             let phaseText = phase === 'placement' ? '放置階段' : phase === 'movement' ? '移動階段' : phase === 'wall_building' ? '建牆階段 (必須相鄰建牆)' : '破牆階段';
             turnDisplay.innerText = `當前回合：${colorMap[currentColor].text} (${phaseText})`;
@@ -362,7 +356,6 @@
         }
 
         function handleCellClick(r, c) {
-            // 🛑 阻擋機制：遊戲結束、正在計算，或者是 AI 的回合，人類皆不可亂點
             if (phase === 'game_over' || isProcessing) return; 
             let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
             if (isVsAI && currentColor === aiColor) return;
@@ -374,7 +367,7 @@
                 if (turnIndex >= placementQueue.length) { phase = 'movement'; turnIndex = 0; }
                 resetCurrentPlayerTimer(); 
                 render();
-                checkAITurn(); // 檢查下家是否為 AI
+                checkAITurn(); 
             } else if (phase === 'movement') {
                 const clickedPieceIndex = getPieceIndexAt(r, c);
 
@@ -443,7 +436,7 @@
             resetCurrentPlayerTimer(); 
             autoCheckEndGame(false); 
             render();
-            checkAITurn(); // 檢查下家是否為 AI
+            checkAITurn(); 
         }
 
         //演算法
@@ -552,18 +545,18 @@
                 // 抓取目前登入的玩家資訊
                 const session = JSON.parse(localStorage.getItem('wallGoSession'));
                 if (session) {
-                // 把玩家的 ID 塞進戰績紀錄中
-                    record.user_id = session.id;
+                    // 把玩家的 ID 塞進戰績紀錄中 (這裡已修復變數名稱錯誤)
+                    historyRecord.user_id = session.id;
             
-                // 傳送到雲端資料庫儲存
-                fetch('https://wallgo-saqf.onrender.com/api/save_history', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(record)
-                }).then(res => res.json())
-                  .then(data => console.log("戰績已成功同步至 MongoDB！"))
-                  .catch(err => console.error("戰績上傳失敗", err));
-            }
+                    // 傳送到最新雲端資料庫儲存
+                    fetch('https://wallgo-play.onrender.com/api/save_history', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(historyRecord)
+                    }).then(res => res.json())
+                      .then(data => console.log("戰績已成功同步至 MongoDB！"))
+                      .catch(err => console.error("戰績上傳失敗", err));
+                }
                 setTimeout(() => { alert(`🏆 遊戲結束！${reason}。\n\n${scoreText}`); }, 150);
             }
         }
