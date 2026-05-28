@@ -175,7 +175,7 @@
 
     <div id="auth-page" class="auth-container">
         <h1 class="auth-title">WALL GO</h1>
-        <p class="auth-subtitle">遊戲登入大廳 (Python後端版)</p>
+        <p class="auth-subtitle">遊戲登入大廳</p>
         
         <div class="auth-card">
             <div class="auth-tabs">
@@ -310,7 +310,7 @@
 
     <div id="friends-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 450px;">
-            <h2>👥 我的好友 (目前使用本地暫存)</h2>
+            <h2>👥 我的好友</h2>
             <div class="add-friend-bar">
                 <input type="text" id="add-friend-input" placeholder="輸入好友專屬 ID (例: #1234)">
                 <button onclick="addFriend()">加入</button>
@@ -322,7 +322,7 @@
 
     <div id="profile-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px;">
-            <h2>✏️ 編輯個人資料 (目前使用本地暫存)</h2>
+            <h2>✏️ 編輯個人資料</h2>
             <div class="input-group">
                 <label>玩家頭像 (支援單一字母或 Emoji 😺)</label>
                 <input type="text" id="input-avatar" maxlength="2">
@@ -365,7 +365,6 @@
             if (!id.startsWith("#")) return alert("ID 格式錯誤，必須包含 # 號 (例如 #1234)");
 
             try {
-                // 發送請求給 Python 後端 (已修正為 Render 雲端網址)
                 const response = await fetch('https://wallgo-saqf.onrender.com/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -398,7 +397,6 @@
             let randomId = "#" + Math.floor(1000 + Math.random() * 9000);
 
             try {
-                // 發送註冊請求給 Python 後端 (已補上 /api/register)
                 const response = await fetch('https://wallgo-saqf.onrender.com/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -425,7 +423,64 @@
             }
         }
 
-        // ------------------------------------
+        // 讀取雲端戰績
+        async function loadHistory() {
+            const listEl = document.getElementById('history-list');
+            const totalGamesEl = document.getElementById('total-games');
+            
+            if (!currentUser) return; // 如果還沒登入就不抓戰績
+
+            try {
+                // 向 Render 後台請求該玩家的戰績
+                const response = await fetch('https://wallgo-saqf.onrender.com/api/get_history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUser.id })
+                });
+                
+                const result = await response.json();
+
+                if (result.success) {
+                    const history = result.history;
+                    if (totalGamesEl) totalGamesEl.innerText = `${history.length} 場`;
+                    
+                    if (history.length === 0) {
+                        listEl.innerHTML = '<div class="history-empty">尚無比賽紀錄<br>趕快開始第一場對戰吧！</div>';
+                        return;
+                    }
+
+                    listEl.innerHTML = '';
+                    // 將陣列反轉 (最新的在最上面) 並渲染
+                    history.slice().reverse().forEach(record => {
+                        listEl.innerHTML += `
+                            <div class="history-item">
+                                <div class="history-date">${record.date}</div>
+                                <div class="history-winner">🏆 贏家：${record.winner} <span style="font-size:12px; color:#bdc3c7;">(${record.winScore}格)</span></div>
+                                <div class="history-details">${record.details}</div>
+                            </div>`;
+                    });
+                }
+            } catch (error) {
+                console.error("載入戰績失敗:", error);
+                listEl.innerHTML = '<div class="history-empty" style="color:var(--danger);">⚠️ 戰績載入失敗，請檢查連線。</div>';
+            }
+        }
+
+        // 清除雲端戰績
+        async function clearHistory() {
+            if (confirm("確定要清除所有的歷史戰績嗎？雲端資料刪除後無法復原！")) {
+                try {
+                    await fetch('https://wallgo-saqf.onrender.com/api/clear_history', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: currentUser.id })
+                    });
+                    loadHistory(); // 重新讀取 (此時會變成 0 場)
+                } catch (error) {
+                    alert("清除失敗，請檢查連線！");
+                }
+            }
+        }
 
         // 首頁切換登入與註冊分頁
         function switchAuthTab(type) {
@@ -440,7 +495,7 @@
             }
         }
 
-        // 忘記密碼邏輯 (為保持簡單，這裡暫時使用 Local 模擬)
+        // 忘記密碼邏輯
         function handleForgotPassword() {
             const loginId = document.getElementById('login-id').value.trim();
             if (loginId) document.getElementById('forgot-pwd-id').value = loginId;
@@ -548,35 +603,6 @@
             });
         }
         function startGame() { window.location.href = `game.html?players=${selectedPlayers}`; }
-
-        function loadHistory() {
-            const listEl = document.getElementById('history-list');
-            const totalGamesEl = document.getElementById('total-games');
-            const history = JSON.parse(localStorage.getItem('wallGoHistory') || '[]');
-
-            if (totalGamesEl) totalGamesEl.innerText = `${history.length} 場`;
-            if (history.length === 0) {
-                listEl.innerHTML = '<div class="history-empty">尚無比賽紀錄<br>趕快開始第一場對戰吧！</div>';
-                return;
-            }
-
-            listEl.innerHTML = '';
-            history.slice().reverse().forEach(record => {
-                listEl.innerHTML += `
-                    <div class="history-item">
-                        <div class="history-date">${record.date}</div>
-                        <div class="history-winner">🏆 贏家：${record.winner} <span style="font-size:12px; color:#bdc3c7;">(${record.winScore}格)</span></div>
-                        <div class="history-details">${record.details}</div>
-                    </div>`;
-            });
-        }
-
-        function clearHistory() {
-            if (confirm("確定要清除所有的歷史戰績嗎？此動作無法復原！")) {
-                localStorage.removeItem('wallGoHistory');
-                loadHistory();
-            }
-        }
 
         window.onload = () => {
             checkLogin();
