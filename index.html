@@ -152,7 +152,7 @@
         .input-group input:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(59, 130, 246, 0.3); }
 
         /*好友列表專屬樣式*/
-        .friend-list-container { max-height: 250px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .friend-list-container { max-height: 350px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
         .friend-item { display: flex; align-items: center; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);}
         .friend-avatar { width: 40px; height: 40px; background: var(--gray-btn); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 15px; }
         .friend-info { flex: 1; }
@@ -309,13 +309,17 @@
     </div>
 
     <div id="friends-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-content" style="max-width: 480px;">
             <h2>👥 我的好友</h2>
             <div class="add-friend-bar">
                 <input type="text" id="add-friend-input" placeholder="輸入好友專屬 ID (例: #1234)">
-                <button onclick="addFriend()">加入</button>
+                <button onclick="sendFriendRequest()">發送邀請</button>
             </div>
-            <div class="friend-list-container" id="friend-list-render"></div>
+            
+            <div class="friend-list-container" id="friend-list-render">
+                <p style="text-align:center; color:gray;">載入中...</p>
+            </div>
+
             <button class="close-btn" onclick="closeModal('friends-modal')">關閉</button>
         </div>
     </div>
@@ -374,7 +378,7 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    currentUser = { ...result.user, friends: [] }; // 保留本地好友陣列架構
+                    currentUser = { ...result.user }; // 移除舊版的 friends: []
                     localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
                     document.getElementById('login-pwd').value = "";
                     checkLogin();
@@ -408,7 +412,7 @@
                 if (result.success) {
                     alert(`🎉 註冊成功！寫入資料庫完畢。\n\n你的專屬玩家 ID 是：${result.user.id}\n請務必牢記你的 ID 與密碼以供下次登入。`);
                     
-                    currentUser = { ...result.user, friends: [] };
+                    currentUser = { ...result.user }; 
                     localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
                     
                     document.getElementById('reg-name').value = "";
@@ -428,10 +432,9 @@
             const listEl = document.getElementById('history-list');
             const totalGamesEl = document.getElementById('total-games');
             
-            if (!currentUser) return; // 如果還沒登入就不抓戰績
+            if (!currentUser) return;
 
             try {
-                // 向 Render 後台請求該玩家的戰績
                 const response = await fetch('https://wallgo-saqf.onrender.com/api/get_history', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -450,7 +453,6 @@
                     }
 
                     listEl.innerHTML = '';
-                    // 將陣列反轉 (最新的在最上面) 並渲染
                     history.slice().reverse().forEach(record => {
                         listEl.innerHTML += `
                             <div class="history-item">
@@ -475,12 +477,139 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ user_id: currentUser.id })
                     });
-                    loadHistory(); // 重新讀取 (此時會變成 0 場)
+                    loadHistory(); 
                 } catch (error) {
                     alert("清除失敗，請檢查連線！");
                 }
             }
         }
+
+        // ================= 新增：雲端好友請求與處理 =================
+
+        // 開啟好友面板並向雲端拉取最新狀態
+        async function openFriendList() { 
+            openModal('friends-modal');
+            document.getElementById('friend-list-render').innerHTML = "<p style='text-align:center;'>載入中...</p>";
+            await fetchFriends();
+        }
+
+        // 向後端請求好友名單與邀請狀態
+        async function fetchFriends() {
+            if (!currentUser) return;
+            try {
+                const res = await fetch('https://wallgo-saqf.onrender.com/api/get_friends', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUser.id })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    renderFriendsUI(result.friends, result.pending_sent, result.pending_received);
+                }
+            } catch(e) {
+                console.error(e);
+                document.getElementById('friend-list-render').innerHTML = "<p style='color:var(--danger); text-align:center;'>載入失敗，請檢查連線。</p>";
+            }
+        }
+
+        // 渲染分類 UI
+        function renderFriendsUI(friends, pendingSent, pendingReceived) {
+            let html = '';
+            
+            // 1. 待我審核 (別人加我)
+            if (pendingReceived.length > 0) {
+                html += `<h4 style="color:var(--primary); margin: 5px 0;">📥 待您審核的邀請</h4>`;
+                pendingReceived.forEach(f => {
+                    html += `
+                    <div class="friend-item" style="border-color: var(--primary);">
+                        <div class="friend-avatar">${f.avatar}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">${f.name}</div>
+                            <div class="friend-id">${f.id}</div>
+                        </div>
+                        <button style="background:var(--success); color:white; padding:6px 12px; border:none; border-radius:6px; margin-right:5px; cursor:pointer;" onclick="handleFriendReq('${f.id}', 'accept')">同意</button>
+                        <button style="background:var(--danger); color:white; padding:6px 12px; border:none; border-radius:6px; cursor:pointer;" onclick="handleFriendReq('${f.id}', 'reject')">拒絕</button>
+                    </div>`;
+                });
+                html += `<hr style="border-color:var(--card-border); margin:15px 0;">`;
+            }
+
+            // 2. 等待對方同意 (我加別人)
+            if (pendingSent.length > 0) {
+                html += `<h4 style="color:#f1c40f; margin: 5px 0;">⏳ 等待對方同意</h4>`;
+                pendingSent.forEach(f => {
+                    html += `
+                    <div class="friend-item" style="opacity:0.6;">
+                        <div class="friend-avatar">${f.avatar}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">${f.name}</div>
+                            <div class="friend-id">${f.id}</div>
+                        </div>
+                        <span style="font-size:13px; color:var(--text-sub);">等待中...</span>
+                    </div>`;
+                });
+                html += `<hr style="border-color:var(--card-border); margin:15px 0;">`;
+            }
+
+            // 3. 正式好友名單
+            html += `<h4 style="color:white; margin: 5px 0;">👥 我的正式好友</h4>`;
+            if (friends.length === 0) {
+                html += "<p style='text-align:center; color:gray; font-size:14px; padding: 20px 0;'>目前還沒有好友喔！趕快輸入上方 ID 加朋友吧！</p>";
+            } else {
+                friends.forEach(f => {
+                    html += `
+                    <div class="friend-item">
+                        <div class="friend-avatar">${f.avatar}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">${f.name} <span class="status-dot online"></span></div>
+                            <div class="friend-id">${f.id}</div>
+                        </div>
+                    </div>`;
+                });
+            }
+
+            document.getElementById('friend-list-render').innerHTML = html;
+        }
+
+        // 發送好友邀請
+        async function sendFriendRequest() {
+            const targetId = document.getElementById('add-friend-input').value.trim();
+            if (!targetId.startsWith("#")) return alert("ID 格式錯誤 (需包含 #，例如 #1234)");
+            
+            try {
+                const res = await fetch('https://wallgo-saqf.onrender.com/api/send_friend_request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requester_id: currentUser.id, receiver_id: targetId })
+                });
+                const result = await res.json();
+                alert(result.message);
+                
+                if (result.success) {
+                    document.getElementById('add-friend-input').value = '';
+                    fetchFriends(); // 重新整理畫面
+                }
+            } catch(e) { alert("連線失敗，請稍後再試！"); }
+        }
+
+        // 處理好友邀請 (同意或拒絕)
+        async function handleFriendReq(requesterId, action) {
+            try {
+                const res = await fetch('https://wallgo-saqf.onrender.com/api/handle_friend_request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requester_id: requesterId, receiver_id: currentUser.id, action: action })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    fetchFriends(); // 成功後自動刷新畫面
+                } else {
+                    alert(result.message);
+                }
+            } catch(e) { alert("連線失敗！"); }
+        }
+
+        // =========================================================
 
         // 首頁切換登入與註冊分頁
         function switchAuthTab(type) {
@@ -548,28 +677,6 @@
             localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
             updateProfileUI();
             closeModal('profile-modal');
-        }
-
-        function openFriendList() { renderFriends(); openModal('friends-modal'); }
-        function renderFriends() {
-            const container = document.getElementById('friend-list-render');
-            container.innerHTML = "";
-            if (!currentUser.friends || currentUser.friends.length === 0) {
-                container.innerHTML = "<p style='text-align:center; color:gray; font-size:14px;'>目前還沒有好友喔！</p>";
-                return;
-            }
-            currentUser.friends.forEach(f => {
-                container.innerHTML += `<div class="friend-item"><div class="friend-name">${f}</div></div>`;
-            });
-        }
-        function addFriend() {
-            const targetId = document.getElementById('add-friend-input').value.trim();
-            if (!targetId.startsWith("#")) return alert("ID 格式錯誤");
-            if (!currentUser.friends) currentUser.friends = [];
-            currentUser.friends.push(targetId);
-            localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
-            document.getElementById('add-friend-input').value = "";
-            renderFriends();
         }
 
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
