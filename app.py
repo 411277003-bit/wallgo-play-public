@@ -13,6 +13,7 @@ try:
     client = MongoClient(MONGO_URI)
     db = client['wallgo_db']       # 資料庫名稱
     users_col = db['users']        # 玩家集合 (Collection)
+    history_col = db['history']    # 戰績資料表
     print("✅ 成功連線至 MongoDB 資料庫！")
 except Exception as e:
     print(f"❌ MongoDB 連線失敗: {e}")
@@ -71,6 +72,36 @@ def login():
             return jsonify({"success": False, "message": "密碼錯誤"})
     else:
         return jsonify({"success": False, "message": "找不到此玩家 ID"})
+# API：儲存戰績
+@app.route('/api/save_history', methods=['POST'])
+def save_history():
+    data = request.json
+    history_col.insert_one({
+        "user_id": data.get('user_id'),
+        "date": data.get('date'),
+        "winner": data.get('winner'),
+        "winScore": data.get('winScore'),
+        "details": data.get('details')
+    })
+    return jsonify({"success": True, "message": "戰績儲存成功"})
+
+# API：讀取戰績
+@app.route('/api/get_history', methods=['POST'])
+def get_history():
+    data = request.json
+    user_id = data.get('user_id')
+    # 根據 user_id 尋找該玩家所有戰績，排除 MongoDB 預設的 _id 欄位
+    records = list(history_col.find({"user_id": user_id}, {"_id": 0}))
+    return jsonify({"success": True, "history": records})
+
+# API：清除戰績
+@app.route('/api/clear_history', methods=['POST'])
+def clear_history():
+    data = request.json
+    user_id = data.get('user_id')
+    # 刪除該玩家的所有戰績
+    history_col.delete_many({"user_id": user_id})
+    return jsonify({"success": True})
 
 if __name__ == '__main__':
     # 這是本地測試用的設定
