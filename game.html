@@ -549,9 +549,21 @@
                     details: activeColors.map(c => `${colorMap[c].text[0]}:${scores[c]}`).join(' | ')
                 };
                 
-                const pastHistory = JSON.parse(localStorage.getItem('wallGoHistory') || '[]');
-                pastHistory.push(historyRecord);
-                localStorage.setItem('wallGoHistory', JSON.stringify(pastHistory));
+                // 抓取目前登入的玩家資訊
+                const session = JSON.parse(localStorage.getItem('wallGoSession'));
+                if (session) {
+                // 把玩家的 ID 塞進戰績紀錄中
+                    record.user_id = session.id;
+            
+                // 傳送到雲端資料庫儲存
+                fetch('https://wallgo-saqf.onrender.com/api/save_history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(record)
+                }).then(res => res.json())
+                  .then(data => console.log("戰績已成功同步至 MongoDB！"))
+                  .catch(err => console.error("戰績上傳失敗", err));
+            }
                 setTimeout(() => { alert(`🏆 遊戲結束！${reason}。\n\n${scoreText}`); }, 150);
             }
         }
