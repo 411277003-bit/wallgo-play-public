@@ -196,17 +196,14 @@ def handle_friend_request():
 def handle_create_room(data):
     room_code = data.get('room_code')
     user_info = data.get('user_info')
-    
     join_room(room_code)
     rooms[room_code] = {'players': [user_info], 'status': 'waiting'}
-    
     emit('room_created', {'room_code': room_code, 'players': rooms[room_code]['players']})
 
 @socketio.on('join_room')
 def handle_join_room(data):
     room_code = data.get('room_code')
     user_info = data.get('user_info')
-    
     if room_code in rooms:
         if len(rooms[room_code]['players']) >= 4:
             emit('join_error', {'message': '房間已滿！不能再加入了。'})
@@ -214,7 +211,6 @@ def handle_join_room(data):
             if not any(p['id'] == user_info['id'] for p in rooms[room_code]['players']):
                 join_room(room_code)
                 rooms[room_code]['players'].append(user_info)
-            
             emit('room_updated', {'room_code': room_code, 'players': rooms[room_code]['players']}, to=room_code)
     else:
         emit('join_error', {'message': '找不到此房間！請確認代碼是否正確。'})
@@ -234,13 +230,33 @@ def handle_leave_room(data):
 @socketio.on('start_game')
 def handle_start_game(data):
     room_code = data.get('room_code')
-    # 告訴房間內的所有人：遊戲開始了！準備切換畫面
-    emit('game_started', {'room_code': room_code}, to=room_code)
+    if room_code in rooms:
+        player_count = len(rooms[room_code]['players'])
+        # 廣播遊戲開始，並把「房間人數」傳給前端
+        emit('game_started', {'room_code': room_code, 'player_count': player_count}, to=room_code)
+
+@socketio.on('join_game_room')
+def handle_join_game_room(data):
+    room_code = data.get('room_code')
+    user_id = data.get('user_id')
+    join_room(room_code)
+    
+    # 根據加入房間的順序，分配紅、藍、黃、綠給玩家
+    my_color = None
+    if room_code in rooms:
+        players = rooms[room_code]['players']
+        colors = ['red', 'blue', 'yellow', 'green']
+        for i, p in enumerate(players):
+            if p['id'] == user_id and i < len(colors):
+                my_color = colors[i]
+                break
+    
+    emit('init_game', {'my_color': my_color})
 
 @socketio.on('game_action')
 def handle_game_action(data):
     room_code = data.get('room_code')
-    # 當某個玩家下棋、移動或蓋牆時，將這個動作廣播給房間內的「其他人」
+    # 當某個玩家下棋時，將動作廣播給房間內的「其他人」
     emit('update_board', data, to=room_code, include_self=False)
 
 if __name__ == '__main__':
