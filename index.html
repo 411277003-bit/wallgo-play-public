@@ -434,7 +434,8 @@
         }
 
         socket.on('game_started', (data) => {
-            window.location.href = `game.html?mode=online&room=${data.room_code}`;
+            // 現在跳轉時，會把房間人數一起帶過去給 game.html
+            window.location.href = `game.html?mode=online&room=${data.room_code}&players=${data.player_count}`;
         });
 
         // 【帳號登入與註冊】
