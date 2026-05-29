@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>牆壁戰棋 (Wall Go) - 遊戲大廳</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
         :root {
             --bg-color: #111827;
@@ -18,62 +19,31 @@
             --danger-hover: #dc2626;
             --gray-btn: #4b5563;
             --gray-hover: #374151;
+            --online-btn: #9b59b6;
         }
 
-        body {
-            font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle at top left, #1f2937, #0f172a);
-            color: var(--text-main);
-            margin: 0;
-            min-height: 100vh;
-        }
-
-        /*登入與註冊入口首頁*/
-        .auth-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            max-width: 450px;
-            padding: 20px;
-            box-sizing: border-box;
-            animation: fadeIn 0.5s ease-out;
-        }
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at top left, #1f2937, #0f172a); color: var(--text-main); margin: 0; min-height: 100vh; }
+        
+        /* 登入與註冊入口首頁 */
+        .auth-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 450px; padding: 20px; box-sizing: border-box; animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
         .auth-title { font-size: 60px; margin: 0 0 5px 0; text-shadow: 0 4px 15px rgba(0,0,0,0.5); letter-spacing: 4px; font-weight: 900;}
         .auth-subtitle { font-size: 18px; color: var(--text-sub); margin-bottom: 30px; letter-spacing: 2px;}
 
-        .auth-card {
-            background: var(--card-bg); padding: 30px; border-radius: 20px; backdrop-filter: blur(12px);
-            border: 1px solid var(--card-border); box-shadow: 0 15px 35px rgba(0,0,0,0.4); width: 100%; box-sizing: border-box;
-        }
-
+        .auth-card { background: var(--card-bg); padding: 30px; border-radius: 20px; backdrop-filter: blur(12px); border: 1px solid var(--card-border); box-shadow: 0 15px 35px rgba(0,0,0,0.4); width: 100%; box-sizing: border-box; }
         .auth-tabs { display: flex; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .auth-tab {
-            flex: 1; padding: 12px; background: none; border: none; color: var(--text-sub); font-size: 16px; cursor: pointer; transition: 0.3s;
-        }
+        .auth-tab { flex: 1; padding: 12px; background: none; border: none; color: var(--text-sub); font-size: 16px; cursor: pointer; transition: 0.3s; }
         .auth-tab:hover { color: white; }
         .auth-tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); font-weight: bold; }
 
         .auth-form { display: none; }
         .auth-form.active { display: block; animation: fadeIn 0.3s ease-out; }
-
-        .forgot-pwd-link {
-            display: block; text-align: right; color: var(--primary); font-size: 13px; text-decoration: none; margin-top: -10px; margin-bottom: 20px; cursor: pointer; transition: 0.2s;
-        }
+        .forgot-pwd-link { display: block; text-align: right; color: var(--primary); font-size: 13px; text-decoration: none; margin-top: -10px; margin-bottom: 20px; cursor: pointer; transition: 0.2s; }
         .forgot-pwd-link:hover { color: #60a5fa; text-decoration: underline; }
 
-        /*遊戲大廳左右排版*/
-        .page-container {
-            display: none; /* 登入前隱藏主畫面 */
-            justify-content: center; align-items: stretch; gap: 50px; width: 100%; max-width: 1100px; padding: 20px; box-sizing: border-box; flex-wrap: wrap;
-        }
-
-        /*左側：遊戲主選單*/
+        /* 遊戲大廳左右排版 */
+        .page-container { display: none; justify-content: center; align-items: stretch; gap: 50px; width: 100%; max-width: 1100px; padding: 20px; box-sizing: border-box; flex-wrap: wrap; }
         .left-section { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; min-width: 350px; }
         .menu-title { font-size: 70px; margin-top: 20px; margin-bottom: 5px; text-shadow: 0 4px 15px rgba(0,0,0,0.5); letter-spacing: 4px; font-weight: 900;}
         .menu-subtitle { font-size: 18px; color: var(--text-sub); margin-bottom: 40px; }
@@ -81,7 +51,7 @@
         .glass-card { background: var(--card-bg); padding: 35px 30px; border-radius: 20px; backdrop-filter: blur(12px); border: 1px solid var(--card-border); box-shadow: 0 15px 35px rgba(0,0,0,0.4); width: 100%; max-width: 380px; box-sizing: border-box; }
         .glass-card h3 { margin-top: 0; margin-bottom: 25px; font-size: 20px; text-align: center; font-weight: 600;}
 
-        .player-select-group { display: flex; justify-content: center; gap: 15px; margin-bottom: 35px; }
+        .player-select-group { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; }
         .player-option { width: 65px; height: 65px; border-radius: 12px; border: 2px solid var(--gray-btn); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; transition: all 0.2s; color: var(--text-sub); }
         .player-option:hover { background: rgba(255,255,255,0.05); color: white; transform: translateY(-2px);}
         .player-option.active { background: rgba(59, 130, 246, 0.1); border-color: var(--primary); color: var(--primary); box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
@@ -89,14 +59,14 @@
         .btn-group { display: flex; flex-direction: column; gap: 15px; }
         .start-btn { width: 100%; padding: 16px; font-size: 18px; font-weight: bold; color: white; background: var(--success); border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         .start-btn:hover { background: var(--success-hover); transform: translateY(-2px); }
-        
         .primary-btn { width: 100%; padding: 16px; font-size: 18px; font-weight: bold; color: white; background: var(--primary); border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         .primary-btn:hover { background: #2563eb; transform: translateY(-2px); }
-
+        .online-btn { width: 100%; padding: 16px; font-size: 18px; font-weight: bold; color: white; background: var(--online-btn); border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .online-btn:hover { background: #8e44ad; transform: translateY(-2px); }
         .rules-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; color: var(--text-sub); background: var(--gray-btn); border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
         .rules-btn:hover { background: var(--gray-hover); color: white; }
 
-        /*右側：側邊選單與內容*/
+        /* 右側：側邊選單與內容 */
         .right-sidebar { width: 350px; display: flex; flex-direction: column; gap: 20px; }
         .nav-tabs { display: flex; background: var(--card-bg); border-radius: 15px; padding: 8px; border: 1px solid var(--card-border); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         .nav-btn { flex: 1; padding: 12px 5px; font-size: 14px; font-weight: bold; color: var(--text-sub); background: transparent; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; }
@@ -107,7 +77,7 @@
         .tab-pane { display: none; flex-direction: column; height: 100%; }
         .tab-pane.active { display: flex; }
 
-        /*戰績清單樣式*/
+        /* 戰績清單樣式 */
         .history-list { flex: 1; overflow-y: auto; padding-right: 5px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; max-height: 250px; }
         .history-list::-webkit-scrollbar { width: 6px; }
         .history-list::-webkit-scrollbar-thumb { background: var(--gray-btn); border-radius: 3px; }
@@ -116,28 +86,26 @@
         .history-winner { font-size: 15px; font-weight: bold; color: #f1c40f; margin-bottom: 5px; }
         .history-details { font-size: 13px; color: #d1d5db; }
         .history-empty { text-align: center; color: var(--text-sub); padding: 30px 0; font-size: 14px;}
-
         .clear-btn { width: 100%; padding: 12px; font-size: 14px; font-weight: bold; color: white; background: var(--danger); border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; }
         .clear-btn:hover { background: var(--danger-hover); }
 
-        /*帳號選單樣式*/
+        /* 帳號選單樣式 */
         .account-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 20px; }
         .avatar-circle { width: 64px; height: 64px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 12px; font-weight: bold; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);}
         .account-name { font-size: 22px; font-weight: bold; margin: 0 0 5px 0; color: white; }
         .account-id { font-size: 13px; color: var(--text-sub); margin-bottom: 5px; font-family: monospace; }
         .account-status { font-size: 14px; font-weight: 500; color: var(--success); }
-
         .account-menu { display: flex; flex-direction: column; gap: 10px; }
         .menu-action-btn { background: transparent; border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-sub); padding: 14px 16px; border-radius: 12px; display: flex; align-items: center; font-size: 15px; cursor: pointer; transition: all 0.2s; text-align: left; width: 100%; }
         .menu-action-btn:hover { background: rgba(255, 255, 255, 0.05); transform: translateX(5px); border-color: var(--primary); color: white; }
         .menu-icon { margin-right: 12px; font-size: 18px; }
 
-        /*相關資訊樣式*/
+        /* 相關資訊樣式 */
         .info-row { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; font-size: 15px;}
         .info-label { color: var(--text-sub); }
         .info-value { font-weight: bold; color: var(--text-main); }
 
-        /*彈出視窗共用樣式*/
+        /* 彈出視窗共用樣式 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); }
         .modal-content { background: #1f2937; color: var(--text-main); padding: 30px; border-radius: 15px; width: 85%; max-width: 550px; text-align: left; box-shadow: 0 15px 40px rgba(0,0,0,0.5); border: 1px solid var(--card-border); transform: translateY(-20px); animation: slideDown 0.3s forwards; }
         @keyframes slideDown { to { transform: translateY(0); } }
@@ -145,13 +113,13 @@
         .close-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; color: white; background: var(--gray-btn); border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; }
         .close-btn:hover { background: var(--gray-hover); }
 
-        /* 表單輸入框樣式*/
+        /* 表單輸入框樣式 */
         .input-group { margin-bottom: 20px; }
         .input-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-sub); }
         .input-group input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--gray-btn); background: #111827; color: white; font-size: 16px; box-sizing: border-box; outline: none; transition: 0.2s; }
         .input-group input:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(59, 130, 246, 0.3); }
 
-        /*好友列表專屬樣式*/
+        /* 好友列表專屬樣式 */
         .friend-list-container { max-height: 350px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
         .friend-item { display: flex; align-items: center; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);}
         .friend-avatar { width: 40px; height: 40px; background: var(--gray-btn); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 15px; }
@@ -169,6 +137,8 @@
         .rules-text { font-size: 15px; line-height: 1.8; margin-bottom: 25px; color: #d1d5db; }
         .rules-text b { color: var(--primary); }
 
+        /* 房間號碼巨大顯示 */
+        .room-code-display { font-size: 48px; font-weight: bold; text-align: center; color: var(--primary); letter-spacing: 5px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; margin-bottom: 20px; border: 2px dashed var(--primary); }
     </style>
 </head>
 <body>
@@ -192,9 +162,7 @@
                     <label>登入密碼</label>
                     <input type="password" id="login-pwd" placeholder="請輸入密碼">
                 </div>
-                
                 <a class="forgot-pwd-link" onclick="handleForgotPassword()">忘記密碼？(重設)</a>
-
                 <button class="start-btn" onclick="performLogin()">進入遊戲</button>
             </div>
 
@@ -215,9 +183,7 @@
     <div id="forgot-pwd-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <h2>🔒 重設密碼</h2>
-            <p style="color: var(--text-sub); font-size: 14px; margin-bottom: 20px;">
-                請輸入您的玩家 ID 以及欲修改的新密碼。
-            </p>
+            <p style="color: var(--text-sub); font-size: 14px; margin-bottom: 20px;">請輸入您的玩家 ID 以及欲修改的新密碼。</p>
             <div class="input-group" style="text-align: left;">
                 <label>玩家 ID</label>
                 <input type="text" id="forgot-pwd-id" placeholder="請輸入玩家 ID (例: #1234)">
@@ -232,13 +198,12 @@
     </div>
 
     <div class="page-container" id="main-container">
-        
         <div class="left-section">
             <h1 class="menu-title">WALL GO</h1>
             <p class="menu-subtitle">牆壁戰棋：極速對決版</p>
             
             <div class="glass-card">
-                <h3>選擇遊玩人數 / 模式</h3>
+                <h3>單機同樂 / AI 模式</h3>
                 <div class="player-select-group">
                     <div class="player-option" data-val="ai" onclick="setPlayers('ai')" style="font-size: 15px; font-weight: bold;">vs AI</div>
                     <div class="player-option" data-val="2" onclick="setPlayers(2)">2</div>
@@ -246,15 +211,22 @@
                     <div class="player-option" data-val="4" onclick="setPlayers(4)">4</div>
                 </div>
                 
+                <div class="btn-group" style="margin-bottom: 20px;">
+                    <button class="start-btn" onclick="startGame()">開始單機遊戲</button>
+                </div>
+
+                <div style="margin: 20px 0; color: var(--text-sub); font-size: 14px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
+                    --- 🌐 遠端連線功能 ---
+                </div>
+
                 <div class="btn-group">
-                    <button class="start-btn" onclick="startGame()">開始遊戲</button>
+                    <button class="online-btn" onclick="openRoomModal()">創建 / 加入線上房間</button>
                     <button class="rules-btn" onclick="openModal('rules-modal')">📄 查看遊戲規則</button>
                 </div>
             </div>
         </div>
 
         <div class="right-sidebar">
-            
             <div class="nav-tabs">
                 <button class="nav-btn active" onclick="switchTab('history')">🏆 歷史戰績</button>
                 <button class="nav-btn" onclick="switchTab('account')">👤 我的帳號</button>
@@ -262,7 +234,6 @@
             </div>
 
             <div class="tab-content-panel">
-                
                 <div id="tab-history" class="tab-pane active">
                     <div style="text-align: right; margin-bottom: 10px; font-size: 13px; color: var(--text-sub);">
                         總遊玩：<span id="total-games" style="color: white; font-weight: bold;">0 場</span>
@@ -278,7 +249,6 @@
                         <div class="account-id" id="display-id">ID: 載入中...</div>
                         <span class="account-status">🟢 線上 (Online)</span>
                     </div>
-
                     <div class="account-menu">
                         <button class="menu-action-btn" onclick="openProfileEditor()">
                             <span class="menu-icon">✏️</span>修改個人資料
@@ -298,12 +268,41 @@
                 <div id="tab-info" class="tab-pane">
                     <h3 style="text-align: center; margin-top: 0; color: white;">系統資訊</h3>
                     <div class="info-row"><span class="info-label">遊戲名稱</span><span class="info-value">Wall Go</span></div>
-                    <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v5.0 真實 Python 後端版</span></div>
+                    <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v6.0 WebSocket 連線版</span></div>
                     <p style="font-size: 12px; color: var(--success); text-align: center; margin-top: 20px;">
                         🟢 已成功連接至雲端 MongoDB Atlas 資料庫。
                     </p>
                 </div>
+            </div>
+        </div>
+    </div>
 
+    <div id="room-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 480px; text-align: center;">
+            <div id="room-ui-main">
+                <h2>🌐 線上對戰大廳</h2>
+                <button class="primary-btn" style="margin-bottom: 25px;" onclick="createRoom()">➕ 建立新房間</button>
+                <div style="color: var(--text-sub); margin-bottom: 15px;">或是輸入代碼加入好友的房間</div>
+                <div class="add-friend-bar">
+                    <input type="text" id="join-room-input" placeholder="輸入 4 位數房間代碼" maxlength="4" style="text-align: center; font-size: 20px; letter-spacing: 3px;">
+                    <button onclick="joinRoom()" style="background: var(--success);">加入</button>
+                </div>
+                <button class="close-btn" style="margin-top: 10px;" onclick="closeModal('room-modal')">取消</button>
+            </div>
+
+            <div id="room-ui-waiting" style="display: none;">
+                <h2>🏠 房間等候室</h2>
+                <p style="color: var(--text-sub); margin-bottom: 5px;">請將此代碼分享給好友：</p>
+                <div class="room-code-display" id="display-room-code">0000</div>
+                
+                <h4 style="text-align: left; margin: 10px 0; color: var(--primary);">房內玩家 (<span id="room-player-count">1</span>/4)</h4>
+                <div class="friend-list-container" id="room-players-list" style="max-height: 200px; text-align: left;">
+                    </div>
+
+                <div class="btn-group" style="margin-top: 20px;">
+                    <button class="start-btn" id="btn-start-online" disabled onclick="startOnlineGame()">🚀 開始線上對戰</button>
+                    <button class="close-btn" onclick="leaveRoom()">離開房間</button>
+                </div>
             </div>
         </div>
     </div>
@@ -319,7 +318,6 @@
             <div class="friend-list-container" id="friend-list-render">
                 <p style="text-align:center; color:gray;">載入中...</p>
             </div>
-
             <button class="close-btn" onclick="closeModal('friends-modal')">關閉</button>
         </div>
     </div>
@@ -328,7 +326,7 @@
         <div class="modal-content" style="max-width: 400px;">
             <h2>✏️ 編輯個人資料</h2>
             <div class="input-group">
-                <label>玩家頭像 (支援單一字母或 Emoji 😺)</label>
+                <label>玩家頭像 (支援單一字母或 Emoji)</label>
                 <input type="text" id="input-avatar" maxlength="2">
             </div>
             <div class="input-group">
@@ -357,10 +355,89 @@
 
     <script>
         let currentUser = null;
-        
-        // --- 核心：連接 Python API 區塊 ---
+        let selectedPlayers = 3;
 
-        // 登入邏輯
+        // 【網路連線設定】
+        const API_URL = 'https://wallgo-play.onrender.com';
+        const socket = io(API_URL);
+        let currentRoomCode = null;
+
+        // 【房間相關功能】
+        function openRoomModal() {
+            openModal('room-modal');
+            document.getElementById('room-ui-main').style.display = 'block';
+            document.getElementById('room-ui-waiting').style.display = 'none';
+        }
+
+        function createRoom() {
+            const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+            const userInfo = { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar };
+            socket.emit('create_room', { room_code: roomCode, user_info: userInfo });
+        }
+
+        function joinRoom() {
+            const roomCode = document.getElementById('join-room-input').value.trim();
+            if (roomCode.length !== 4) return alert("請輸入 4 位數字的房間代碼！");
+            const userInfo = { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar };
+            socket.emit('join_room', { room_code: roomCode, user_info: userInfo });
+        }
+
+        function leaveRoom() {
+            if (currentRoomCode) {
+                socket.emit('leave_room', { room_code: currentRoomCode, user_id: currentUser.id });
+                currentRoomCode = null;
+            }
+            openRoomModal();
+        }
+
+        socket.on('room_created', (data) => {
+            currentRoomCode = data.room_code;
+            renderWaitingRoom(data.room_code, data.players);
+        });
+
+        socket.on('room_updated', (data) => {
+            if (currentRoomCode === data.room_code) {
+                renderWaitingRoom(data.room_code, data.players);
+            }
+        });
+
+        socket.on('join_error', (data) => {
+            alert("❌ " + data.message);
+        });
+
+        function renderWaitingRoom(code, players) {
+            document.getElementById('room-ui-main').style.display = 'none';
+            document.getElementById('room-ui-waiting').style.display = 'block';
+            document.getElementById('display-room-code').innerText = code;
+            document.getElementById('room-player-count').innerText = players.length;
+
+            const list = document.getElementById('room-players-list');
+            list.innerHTML = '';
+            players.forEach(p => {
+                list.innerHTML += `
+                    <div class="friend-item">
+                        <div class="friend-avatar">${p.avatar}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">${p.name} ${p.id === currentUser.id ? '(你)' : ''}</div>
+                            <div class="friend-id">${p.id}</div>
+                        </div>
+                    </div>`;
+            });
+
+            document.getElementById('btn-start-online').disabled = (players.length < 2);
+        }
+
+        function startOnlineGame() {
+            if (currentRoomCode) {
+                socket.emit('start_game', { room_code: currentRoomCode });
+            }
+        }
+
+        socket.on('game_started', (data) => {
+            window.location.href = `game.html?mode=online&room=${data.room_code}`;
+        });
+
+        // 【帳號登入與註冊】
         async function performLogin() {
             const id = document.getElementById('login-id').value.trim();
             const pwd = document.getElementById('login-pwd').value.trim();
@@ -369,7 +446,7 @@
             if (!id.startsWith("#")) return alert("ID 格式錯誤，必須包含 # 號 (例如 #1234)");
 
             try {
-                const response = await fetch('https://wallgo-play.onrender.com/api/login', {
+                const response = await fetch(`${API_URL}/api/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: id, password: pwd })
@@ -378,7 +455,7 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    currentUser = { ...result.user }; // 移除舊版的 friends: []
+                    currentUser = { ...result.user };
                     localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
                     document.getElementById('login-pwd').value = "";
                     checkLogin();
@@ -386,12 +463,10 @@
                     alert("❌ " + result.message);
                 }
             } catch (error) {
-                console.error("API Error:", error);
                 alert("無法連線到伺服器，請確認後端已成功啟動！");
             }
         }
 
-        // 註冊邏輯
         async function performRegister() {
             const name = document.getElementById('reg-name').value.trim();
             const pwd = document.getElementById('reg-pwd').value.trim();
@@ -401,7 +476,7 @@
             let randomId = "#" + Math.floor(1000 + Math.random() * 9000);
 
             try {
-                const response = await fetch('https://wallgo-play.onrender.com/api/register', {
+                const response = await fetch(`${API_URL}/api/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: randomId, username: name, password: pwd })
@@ -411,10 +486,8 @@
 
                 if (result.success) {
                     alert(`🎉 註冊成功！寫入資料庫完畢。\n\n你的專屬玩家 ID 是：${result.user.id}\n請務必牢記你的 ID 與密碼以供下次登入。`);
-                    
                     currentUser = { ...result.user }; 
                     localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
-                    
                     document.getElementById('reg-name').value = "";
                     document.getElementById('reg-pwd').value = "";
                     checkLogin();
@@ -422,36 +495,28 @@
                     alert("❌ 註冊失敗：" + result.message);
                 }
             } catch (error) {
-                console.error("API Error:", error);
                 alert("無法連線到伺服器，請確認後端已成功啟動！");
             }
         }
 
-        // 讀取雲端戰績
+        // 【歷史戰績】
         async function loadHistory() {
             const listEl = document.getElementById('history-list');
             const totalGamesEl = document.getElementById('total-games');
-            
             if (!currentUser) return;
 
             try {
-                const response = await fetch('https://wallgo-play.onrender.com/api/get_history', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUser.id })
+                const response = await fetch(`${API_URL}/api/get_history`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.id })
                 });
-                
                 const result = await response.json();
-
                 if (result.success) {
                     const history = result.history;
                     if (totalGamesEl) totalGamesEl.innerText = `${history.length} 場`;
-                    
                     if (history.length === 0) {
                         listEl.innerHTML = '<div class="history-empty">尚無比賽紀錄<br>趕快開始第一場對戰吧！</div>';
                         return;
                     }
-
                     listEl.innerHTML = '';
                     history.slice().reverse().forEach(record => {
                         listEl.innerHTML += `
@@ -463,60 +528,44 @@
                     });
                 }
             } catch (error) {
-                console.error("載入戰績失敗:", error);
                 listEl.innerHTML = '<div class="history-empty" style="color:var(--danger);">⚠️ 戰績載入失敗，請檢查連線。</div>';
             }
         }
 
-        // 清除雲端戰績
         async function clearHistory() {
             if (confirm("確定要清除所有的歷史戰績嗎？雲端資料刪除後無法復原！")) {
                 try {
-                    await fetch('https://wallgo-play.onrender.com/api/clear_history', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ user_id: currentUser.id })
+                    await fetch(`${API_URL}/api/clear_history`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.id })
                     });
                     loadHistory(); 
-                } catch (error) {
-                    alert("清除失敗，請檢查連線！");
-                }
+                } catch (error) { alert("清除失敗，請檢查連線！"); }
             }
         }
 
-        // ================= 新增：雲端好友請求與處理 =================
-
-        // 開啟好友面板並向雲端拉取最新狀態
+        // 【好友系統】
         async function openFriendList() { 
             openModal('friends-modal');
             document.getElementById('friend-list-render').innerHTML = "<p style='text-align:center;'>載入中...</p>";
             await fetchFriends();
         }
 
-        // 向後端請求好友名單與邀請狀態
         async function fetchFriends() {
             if (!currentUser) return;
             try {
-                const res = await fetch('https://wallgo-play.onrender.com/api/get_friends', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUser.id })
+                const res = await fetch(`${API_URL}/api/get_friends`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.id })
                 });
                 const result = await res.json();
-                if (result.success) {
-                    renderFriendsUI(result.friends, result.pending_sent, result.pending_received);
-                }
+                if (result.success) renderFriendsUI(result.friends, result.pending_sent, result.pending_received);
             } catch(e) {
-                console.error(e);
                 document.getElementById('friend-list-render').innerHTML = "<p style='color:var(--danger); text-align:center;'>載入失敗，請檢查連線。</p>";
             }
         }
 
-        // 渲染分類 UI
         function renderFriendsUI(friends, pendingSent, pendingReceived) {
             let html = '';
             
-            // 1. 待我審核 (別人加我)
             if (pendingReceived.length > 0) {
                 html += `<h4 style="color:var(--primary); margin: 5px 0;">📥 待您審核的邀請</h4>`;
                 pendingReceived.forEach(f => {
@@ -534,7 +583,6 @@
                 html += `<hr style="border-color:var(--card-border); margin:15px 0;">`;
             }
 
-            // 2. 等待對方同意 (我加別人)
             if (pendingSent.length > 0) {
                 html += `<h4 style="color:#f1c40f; margin: 5px 0;">⏳ 等待對方同意</h4>`;
                 pendingSent.forEach(f => {
@@ -551,7 +599,6 @@
                 html += `<hr style="border-color:var(--card-border); margin:15px 0;">`;
             }
 
-            // 3. 正式好友名單
             html += `<h4 style="color:white; margin: 5px 0;">👥 我的正式好友</h4>`;
             if (friends.length === 0) {
                 html += "<p style='text-align:center; color:gray; font-size:14px; padding: 20px 0;'>目前還沒有好友喔！趕快輸入上方 ID 加朋友吧！</p>";
@@ -567,51 +614,38 @@
                     </div>`;
                 });
             }
-
             document.getElementById('friend-list-render').innerHTML = html;
         }
 
-        // 發送好友邀請
         async function sendFriendRequest() {
             const targetId = document.getElementById('add-friend-input').value.trim();
             if (!targetId.startsWith("#")) return alert("ID 格式錯誤 (需包含 #，例如 #1234)");
             
             try {
-                const res = await fetch('https://wallgo-play.onrender.com/api/send_friend_request', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ requester_id: currentUser.id, receiver_id: targetId })
+                const res = await fetch(`${API_URL}/api/send_friend_request`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requester_id: currentUser.id, receiver_id: targetId })
                 });
                 const result = await res.json();
                 alert(result.message);
-                
                 if (result.success) {
                     document.getElementById('add-friend-input').value = '';
-                    fetchFriends(); // 重新整理畫面
+                    fetchFriends(); 
                 }
             } catch(e) { alert("連線失敗，請稍後再試！"); }
         }
 
-        // 處理好友邀請 (同意或拒絕)
         async function handleFriendReq(requesterId, action) {
             try {
-                const res = await fetch('https://wallgo-play.onrender.com/api/handle_friend_request', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ requester_id: requesterId, receiver_id: currentUser.id, action: action })
+                const res = await fetch(`${API_URL}/api/handle_friend_request`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requester_id: requesterId, receiver_id: currentUser.id, action: action })
                 });
                 const result = await res.json();
-                if (result.success) {
-                    fetchFriends(); // 成功後自動刷新畫面
-                } else {
-                    alert(result.message);
-                }
+                if (result.success) fetchFriends(); 
+                else alert(result.message);
             } catch(e) { alert("連線失敗！"); }
         }
 
-        // =========================================================
-
-        // 首頁切換登入與註冊分頁
+        // 【輔助與 UI 操作】
         function switchAuthTab(type) {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
@@ -624,7 +658,6 @@
             }
         }
 
-        // 忘記密碼邏輯
         function handleForgotPassword() {
             const loginId = document.getElementById('login-id').value.trim();
             if (loginId) document.getElementById('forgot-pwd-id').value = loginId;
@@ -637,7 +670,6 @@
             closeModal('forgot-pwd-modal');
         }
 
-        //檢查登入狀態，控制顯示首頁或大廳
         function checkLogin() {
             const savedSession = localStorage.getItem('wallGoSession');
             if (savedSession) {
@@ -651,7 +683,6 @@
             }
         }
 
-        //登出
         function logout() {
             if (confirm("確定要登出帳號嗎？")) {
                 localStorage.removeItem('wallGoSession');
@@ -659,7 +690,6 @@
             }
         }
 
-        //UI與大廳更新邏輯
         function updateProfileUI() {
             document.getElementById('display-name').innerText = currentUser.name;
             document.getElementById('display-id').innerText = `ID: ${currentUser.id}`;
@@ -701,7 +731,6 @@
             document.getElementById(`tab-${tabId}`).classList.add('active');
         }
 
-        let selectedPlayers = 3;
         function setPlayers(val) {
             selectedPlayers = val;
             document.querySelectorAll('.player-option').forEach(opt => {
