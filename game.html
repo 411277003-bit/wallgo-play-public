@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>牆壁戰棋 (Wall Go) - 戰鬥中</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
         :root {
             --cell-size: 50px;
@@ -16,51 +17,38 @@
             --color-highlight-wall: rgba(241, 196, 15, 0.8);
             --bg-color: #f0f2f5;
         }
-
-        body {
-            font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex; flex-direction: column; align-items: center; background-color: var(--bg-color); margin: 0; padding: 20px; min-height: 100vh;
-        }
-
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: var(--bg-color); margin: 0; padding: 20px; min-height: 100vh; }
         .status-panel { text-align: center; margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 550px; }
         .status-panel h2 { margin: 0 0 10px 0; }
         .status-panel p { margin: 0; color: #7f8c8d; font-size: 14px; font-weight: bold; line-height: 1.5; }
-        
         .timer-container { display: flex; justify-content: center; gap: 15px; margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; }
         .timer-box { padding: 8px 12px; border-radius: 5px; font-weight: bold; font-size: 16px; background: white; border: 2px solid #bdc3c7; transition: 0.3s; }
         .timer-active { border-color: #e74c3c; background: #fff0f0; transform: scale(1.05); animation: pulse 1s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
-
         .breaker-status { font-size: 13px; color: #95a5a6; margin-top: 8px; }
-
         .board { display: grid; background-color: #bdc3c7; padding: 10px; border-radius: 8px; grid-template-columns: repeat(6, var(--cell-size) var(--wall-thickness)) var(--cell-size); grid-template-rows: repeat(6, var(--cell-size) var(--wall-thickness)) var(--cell-size); width: max-content; }
         .grid-item { display: flex; justify-content: center; align-items: center; transition: background-color 0.2s; }
         .cell { background-color: white; border-radius: 4px; cursor: pointer; }
         .cell:hover { background-color: #ecf0f1; }
         .wall-h, .wall-v { cursor: pointer; border-radius: 2px; }
         .intersection { background-color: transparent; }
-
         .piece { border-radius: 50%; width: 80%; height: 80%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.2s; pointer-events: none; }
         .piece-red { background-color: var(--color-red); }
         .piece-blue { background-color: var(--color-blue); }
         .piece-yellow { background-color: var(--color-yellow); }
         .piece-green { background-color: var(--color-green); }
-
         .wall-placed { cursor: default; }
         .wall-red { background-color: var(--color-red) !important; }
         .wall-blue { background-color: var(--color-blue) !important; }
         .wall-yellow { background-color: var(--color-yellow) !important; }
         .wall-green { background-color: var(--color-green) !important; }
-
         .territory-red { background-color: rgba(231, 76, 60, 0.3) !important; }
         .territory-blue { background-color: rgba(52, 152, 219, 0.3) !important; }
         .territory-yellow { background-color: rgba(241, 196, 15, 0.3) !important; }
         .territory-green { background-color: rgba(46, 204, 113, 0.3) !important; }
-
         .highlight { background-color: var(--color-highlight) !important; cursor: pointer; opacity: 0.8; }
         .highlight-wall { background-color: var(--color-highlight-wall) !important; cursor: pointer; opacity: 0.8; }
         .selected { transform: scale(1.15); border: 3px solid #2c3e50; }
-
         .controls { margin-top: 20px; display: flex; gap: 10px; align-items: center; }
         button { padding: 10px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 5px; background-color: #2c3e50; color: white; cursor: pointer; transition: 0.2s; }
         button:hover { background-color: #1a252f; }
@@ -75,6 +63,7 @@
     <div class="status-panel">
         <h2 id="turn-display">當前回合：載入中...</h2>
         <p id="instruction-display">請執行動作</p>
+        <div id="online-identity-display" style="color: #9b59b6; font-size: 14px; font-weight: bold; margin-top: 5px;"></div>
         <div id="timer-container" class="timer-container"></div>
         <div id="breaker-display" class="breaker-status"></div>
     </div>
@@ -83,23 +72,30 @@
 
     <div class="controls">
         <button id="btn-breaker" class="btn-action" onclick="toggleWallBreaker()">使用破牆者</button>
-        <button onclick="resetGame()">重新開始</button>
+        <button onclick="resetGame()" id="btn-reset">重新開始</button>
         <button class="btn-back" onclick="backToMenu()">回主選單</button>
     </div>
 
     <script>
-        const boardSize = 13; 
-        let phase = 'placement'; 
+        const API_URL = 'https://wallgo-play.onrender.com';
         
-        // --- 🤖 AI 模式設定 ---
         const urlParams = new URLSearchParams(window.location.search);
         const paramPlayers = urlParams.get('players');
+        const mode = urlParams.get('mode'); // 'online' 或 null
+        const roomCode = urlParams.get('room'); // 房間代碼
+        
         const isVsAI = (paramPlayers === 'ai'); 
         let playerCount = isVsAI ? 2 : (parseInt(paramPlayers) || 3);
-        let aiColor = isVsAI ? 'blue' : null; // AI 固定為藍色
-        let isProcessing = false; // 用於鎖定玩家點擊，防護 AI 思考期間
-        // ----------------------
+        let aiColor = isVsAI ? 'blue' : null;
+        let isProcessing = false; 
 
+        // ====== 🌐 線上連線變數 ======
+        let socket = null;
+        let myOnlineColor = null; 
+        let session = JSON.parse(localStorage.getItem('wallGoSession'));
+
+        const boardSize = 13; 
+        let phase = 'placement'; 
         const allColors = ['red', 'blue', 'yellow', 'green'];
         let activeColors = [];
         let placementQueue = [];
@@ -123,15 +119,68 @@
         const timerContainer = document.getElementById('timer-container');
         const breakerDisplay = document.getElementById('breaker-display');
         const btnBreaker = document.getElementById('btn-breaker');
+        const onlineIdentityDisplay = document.getElementById('online-identity-display');
 
         const colorMap = {
-            'red': { text: '紅色 (你)', color: 'var(--color-red)', icon: '🔴' },
-            'blue': { text: isVsAI ? '藍色 (AI機器人)' : '藍色', color: 'var(--color-blue)', icon: '🔵' },
+            'red': { text: '紅色', color: 'var(--color-red)', icon: '🔴' },
+            'blue': { text: '藍色', color: 'var(--color-blue)', icon: '🔵' },
             'yellow': { text: '黃色', color: 'var(--color-yellow)', icon: '🟡' },
             'green': { text: '綠色', color: 'var(--color-green)', icon: '🟢' }
         };
 
-        if (!isVsAI) colorMap['red'].text = '紅色';
+        if (isVsAI) colorMap['blue'].text = '藍色 (AI)';
+        
+        // ================= 🌐 WebSocket 連線邏輯 =================
+        if (mode === 'online') {
+            document.getElementById('btn-reset').style.display = 'none'; // 線上模式隱藏重新開始
+            socket = io(API_URL);
+            
+            socket.emit('join_game_room', { room_code: roomCode, user_id: session.id });
+
+            // 接收伺服器分配的顏色
+            socket.on('init_game', (data) => {
+                myOnlineColor = data.my_color;
+                onlineIdentityDisplay.innerText = `你被分配到的陣營是：${colorMap[myOnlineColor].icon} ${colorMap[myOnlineColor].text}`;
+                colorMap[myOnlineColor].text += " (你)";
+                updateUI();
+            });
+
+            // 接收別人傳來的遊戲狀態
+            socket.on('update_board', (data) => {
+                pieces = data.pieces;
+                walls = new Map(data.walls);
+                territories = new Map(data.territories);
+                phase = data.phase;
+                turnIndex = data.turnIndex;
+                movedPieceIndex = data.movedPieceIndex;
+                selectedPieceIndex = data.selectedPieceIndex;
+                stepsTaken = data.stepsTaken;
+                playersInfo = data.playersInfo;
+                playerTimes = data.playerTimes;
+                
+                render();
+                autoCheckEndGame(false); // 同步檢查是否結束
+            });
+        }
+
+        // 把當前畫面狀態廣播給房間裡的其他人
+        function broadcastGameState() {
+            if (mode !== 'online') return;
+            socket.emit('game_action', {
+                room_code: roomCode,
+                pieces: pieces,
+                walls: Array.from(walls.entries()), // Map 無法透過 JSON 傳遞，需轉成 Array
+                territories: Array.from(territories.entries()),
+                phase: phase,
+                turnIndex: turnIndex,
+                movedPieceIndex: movedPieceIndex,
+                selectedPieceIndex: selectedPieceIndex,
+                stepsTaken: stepsTaken,
+                playersInfo: playersInfo,
+                playerTimes: playerTimes
+            });
+        }
+        // =========================================================
 
         function backToMenu() { window.location.href = 'index.html'; }
 
@@ -151,7 +200,7 @@
             isProcessing = false;
             initBoard();
             startClock(); 
-            checkAITurn(); // 檢查首回合是否為 AI
+            checkAITurn(); 
         }
 
         function initBoard() {
@@ -180,12 +229,25 @@
                 let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
                 playerTimes[currentColor]--; 
                 updateUI(); 
+                
                 if (playerTimes[currentColor] <= 0) {
                     clearInterval(clockInterval); 
-                    setTimeout(() => {
-                        alert(`⏳ 時間耗盡！系統已自動為 ${colorMap[currentColor].text} 隨機執行動作並跳過回合。`);
-                        executeAILogic(currentColor); 
-                    }, 50);
+                    
+                    // 若為線上模式，只有該顏色的本人可以觸發「超時代管」來避免重複發送
+                    if (mode === 'online') {
+                        if (currentColor === myOnlineColor) {
+                            setTimeout(() => {
+                                alert(`⏳ 時間耗盡！系統已自動為你隨機執行動作並跳過回合。`);
+                                executeAILogic(currentColor); 
+                                broadcastGameState();
+                            }, 50);
+                        }
+                    } else {
+                        setTimeout(() => {
+                            alert(`⏳ 時間耗盡！系統已自動為 ${colorMap[currentColor].text} 隨機執行動作並跳過回合。`);
+                            executeAILogic(currentColor); 
+                        }, 50);
+                    }
                 }
             }, 1000);
         }
@@ -196,7 +258,6 @@
             playerTimes[currentColor] = TURN_TIME_LIMIT;
         }
 
-        // --- 🤖 AI 核心邏輯 / AFK 自動代管 ---
         function executeAILogic(color) {
             if (phase === 'placement') {
                 let emptyCells = [];
@@ -258,9 +319,8 @@
             checkAITurn(); 
         }
 
-        // --- 檢查是否輪到 AI 進行回合 ---
         function checkAITurn() {
-            if (phase === 'game_over') { isProcessing = false; return; }
+            if (phase === 'game_over' || mode === 'online') { isProcessing = false; return; }
             let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
             
             if (isVsAI && currentColor === aiColor) {
@@ -299,9 +359,7 @@
                 if (cell) {
                     const pieceDiv = document.createElement('div');
                     pieceDiv.classList.add('piece', `piece-${p.color}`);
-                    if (index === selectedPieceIndex || index === movedPieceIndex) {
-                        pieceDiv.classList.add('selected');
-                    }
+                    if (index === selectedPieceIndex || index === movedPieceIndex) pieceDiv.classList.add('selected');
                     cell.appendChild(pieceDiv);
                 }
             });
@@ -355,78 +413,109 @@
             btnBreaker.disabled = (phase !== 'movement' || stepsTaken > 0 || !playersInfo[currentColor].hasBreaker);
         }
 
+        // 動作檢查：確認是否輪到自己 (線上模式專用)
+        function checkMyTurn(currentColor) {
+            if (mode === 'online') {
+                if (myOnlineColor === null) { alert("尚未獲取陣營分配，請稍候..."); return false; }
+                if (currentColor !== myOnlineColor) { alert("還沒輪到你喔！請等待對手下棋。"); return false; }
+            }
+            return true;
+        }
+
         function handleCellClick(r, c) {
             if (phase === 'game_over' || isProcessing) return; 
             let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
             if (isVsAI && currentColor === aiColor) return;
+            if (!checkMyTurn(currentColor)) return;
+
+            let actionMade = false;
 
             if (phase === 'placement') {
                 if (getPieceIndexAt(r, c) !== -1) return;
-                pieces.push({ color: placementQueue[turnIndex], r, c });
+                pieces.push({ color: currentColor, r, c });
                 turnIndex++;
                 if (turnIndex >= placementQueue.length) { phase = 'movement'; turnIndex = 0; }
                 resetCurrentPlayerTimer(); 
-                render();
-                checkAITurn(); 
+                actionMade = true;
             } else if (phase === 'movement') {
                 const clickedPieceIndex = getPieceIndexAt(r, c);
 
                 if (selectedPieceIndex === -1) {
                     if (clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor) {
-                        selectedPieceIndex = clickedPieceIndex; stepsTaken = 0; render();
+                        selectedPieceIndex = clickedPieceIndex; stepsTaken = 0; actionMade = true;
                     }
                 } else {
                     if (stepsTaken === 0 && clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor && clickedPieceIndex !== selectedPieceIndex) {
-                        selectedPieceIndex = clickedPieceIndex; render(); return;
-                    }
+                        selectedPieceIndex = clickedPieceIndex; actionMade = true;
+                    } else {
+                        const p = pieces[selectedPieceIndex];
+                        const isValid = getValidMoves(p.r, p.c).some(m => m.r === r && m.c === c);
 
-                    const p = pieces[selectedPieceIndex];
-                    const isValid = getValidMoves(p.r, p.c).some(m => m.r === r && m.c === c);
-
-                    if (isValid) {
-                        if (p.r === r && p.c === c) {
-                            movedPieceIndex = selectedPieceIndex; selectedPieceIndex = -1; stepsTaken = 0; phase = 'wall_building';
-                        } else {
-                            pieces[selectedPieceIndex].r = r; pieces[selectedPieceIndex].c = c; stepsTaken++;
-                            if (stepsTaken >= 2) {
+                        if (isValid) {
+                            if (p.r === r && p.c === c) {
                                 movedPieceIndex = selectedPieceIndex; selectedPieceIndex = -1; stepsTaken = 0; phase = 'wall_building';
+                            } else {
+                                pieces[selectedPieceIndex].r = r; pieces[selectedPieceIndex].c = c; stepsTaken++;
+                                if (stepsTaken >= 2) {
+                                    movedPieceIndex = selectedPieceIndex; selectedPieceIndex = -1; stepsTaken = 0; phase = 'wall_building';
+                                }
                             }
+                            actionMade = true;
+                        } else if (stepsTaken === 0) {
+                            selectedPieceIndex = -1; actionMade = true;
                         }
-                    } else if (stepsTaken === 0) selectedPieceIndex = -1;
-                    render();
+                    }
                 }
+            }
+
+            if (actionMade) {
+                render();
+                broadcastGameState(); // 廣播給對手
+                if (mode !== 'online') checkAITurn(); 
             }
         }
 
         function handleWallClick(r, c) {
             if (phase === 'game_over' || isProcessing) return; 
-            let currentColorCheck = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
-            if (isVsAI && currentColorCheck === aiColor) return;
+            let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
+            if (isVsAI && currentColor === aiColor) return;
+            if (!checkMyTurn(currentColor)) return;
+
+            let actionMade = false;
 
             if (phase === 'wall_building') {
-                const currentColor = pieces[movedPieceIndex].color; 
                 const isValid = getValidWalls(pieces[movedPieceIndex].r, pieces[movedPieceIndex].c).some(w => w.r === r && w.c === c);
                 if (isValid && !walls.has(`${r},${c}`)) {
                     walls.set(`${r},${c}`, currentColor); 
                     endTurn(); 
+                    return; // endTurn 內已有廣播，直接 return
                 }
             } else if (phase === 'wall_breaking') {
                 if (walls.has(`${r},${c}`)) {
                     walls.delete(`${r},${c}`);
-                    const currentColor = movementOrder[turnIndex];
                     playersInfo[currentColor].hasBreaker = false; 
                     phase = 'movement'; 
                     autoCheckEndGame(false); 
-                    render();
+                    actionMade = true;
                 }
+            }
+
+            if (actionMade) {
+                render();
+                broadcastGameState(); 
             }
         }
 
         function toggleWallBreaker() {
             if (isProcessing) return;
+            let currentColor = movementOrder[turnIndex];
+            if (!checkMyTurn(currentColor)) return;
+
             if (phase === 'movement' && stepsTaken === 0) {
                 if (walls.size === 0) return alert("場上目前沒有牆壁可供拆除！");
-                phase = 'wall_breaking'; selectedPieceIndex = -1; render();
+                phase = 'wall_breaking'; selectedPieceIndex = -1; 
+                render();
+                broadcastGameState();
             }
         }
 
@@ -436,10 +525,10 @@
             resetCurrentPlayerTimer(); 
             autoCheckEndGame(false); 
             render();
-            checkAITurn(); 
+            broadcastGameState(); 
+            if (mode !== 'online') checkAITurn(); 
         }
 
-        //演算法
         function getValidMoves(startR, startC) {
             const validMoves = [];
             for (let r = 0; r < boardSize; r += 2) {
@@ -471,7 +560,6 @@
             return validWalls;
         }
 
-        //BFS結算與紀錄儲存
         function autoCheckEndGame(forceCalculate = false) {
             if (phase === 'placement' && !forceCalculate) return;
             let gameOver = forceCalculate; 
@@ -531,8 +619,8 @@
                 
                 let maxScore = -1; let winners = [];
                 activeColors.forEach(c => {
-                    if (scores[c] > maxScore) { maxScore = scores[c]; winners = [colorMap[c].text]; } 
-                    else if (scores[c] === maxScore) winners.push(colorMap[c].text); 
+                    if (scores[c] > maxScore) { maxScore = scores[c]; winners = [colorMap[c].text.replace(' (你)','')]; } 
+                    else if (scores[c] === maxScore) winners.push(colorMap[c].text.replace(' (你)','')); 
                 });
                 
                 const historyRecord = {
@@ -542,20 +630,13 @@
                     details: activeColors.map(c => `${colorMap[c].text[0]}:${scores[c]}`).join(' | ')
                 };
                 
-                // 抓取目前登入的玩家資訊
-                const session = JSON.parse(localStorage.getItem('wallGoSession'));
                 if (session) {
-                    // 把玩家的 ID 塞進戰績紀錄中 (這裡已修復變數名稱錯誤)
                     historyRecord.user_id = session.id;
-            
-                    // 傳送到最新雲端資料庫儲存
-                    fetch('https://wallgo-play.onrender.com/api/save_history', {
+                    fetch(`${API_URL}/api/save_history`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(historyRecord)
-                    }).then(res => res.json())
-                      .then(data => console.log("戰績已成功同步至 MongoDB！"))
-                      .catch(err => console.error("戰績上傳失敗", err));
+                    }).then(res => res.json()).catch(err => console.error(err));
                 }
                 setTimeout(() => { alert(`🏆 遊戲結束！${reason}。\n\n${scoreText}`); }, 150);
             }
