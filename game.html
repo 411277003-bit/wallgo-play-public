@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>牆壁戰棋 (Wall Go) - 戰鬥中</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
         :root {
             --cell-size: 50px;
@@ -17,38 +16,51 @@
             --color-highlight-wall: rgba(241, 196, 15, 0.8);
             --bg-color: #f0f2f5;
         }
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: var(--bg-color); margin: 0; padding: 20px; min-height: 100vh; }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; align-items: center; background-color: var(--bg-color); margin: 0; padding: 20px; min-height: 100vh;
+        }
+
         .status-panel { text-align: center; margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 550px; }
         .status-panel h2 { margin: 0 0 10px 0; }
         .status-panel p { margin: 0; color: #7f8c8d; font-size: 14px; font-weight: bold; line-height: 1.5; }
+        
         .timer-container { display: flex; justify-content: center; gap: 15px; margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; }
         .timer-box { padding: 8px 12px; border-radius: 5px; font-weight: bold; font-size: 16px; background: white; border: 2px solid #bdc3c7; transition: 0.3s; }
         .timer-active { border-color: #e74c3c; background: #fff0f0; transform: scale(1.05); animation: pulse 1s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
+
         .breaker-status { font-size: 13px; color: #95a5a6; margin-top: 8px; }
+
         .board { display: grid; background-color: #bdc3c7; padding: 10px; border-radius: 8px; grid-template-columns: repeat(6, var(--cell-size) var(--wall-thickness)) var(--cell-size); grid-template-rows: repeat(6, var(--cell-size) var(--wall-thickness)) var(--cell-size); width: max-content; }
         .grid-item { display: flex; justify-content: center; align-items: center; transition: background-color 0.2s; }
         .cell { background-color: white; border-radius: 4px; cursor: pointer; }
         .cell:hover { background-color: #ecf0f1; }
         .wall-h, .wall-v { cursor: pointer; border-radius: 2px; }
         .intersection { background-color: transparent; }
+
         .piece { border-radius: 50%; width: 80%; height: 80%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.2s; pointer-events: none; }
         .piece-red { background-color: var(--color-red); }
         .piece-blue { background-color: var(--color-blue); }
         .piece-yellow { background-color: var(--color-yellow); }
         .piece-green { background-color: var(--color-green); }
+
         .wall-placed { cursor: default; }
         .wall-red { background-color: var(--color-red) !important; }
         .wall-blue { background-color: var(--color-blue) !important; }
         .wall-yellow { background-color: var(--color-yellow) !important; }
         .wall-green { background-color: var(--color-green) !important; }
+
         .territory-red { background-color: rgba(231, 76, 60, 0.3) !important; }
         .territory-blue { background-color: rgba(52, 152, 219, 0.3) !important; }
         .territory-yellow { background-color: rgba(241, 196, 15, 0.3) !important; }
         .territory-green { background-color: rgba(46, 204, 113, 0.3) !important; }
+
         .highlight { background-color: var(--color-highlight) !important; cursor: pointer; opacity: 0.8; }
-        .highlight-wall { background-color: var(--color-highlight-wall) !important; cursor: pointer; opacity: 0.8; }
+        .highlight-wall { background-color: rgba(101, 67, 33, 0.6) !important; cursor: pointer; opacity: 0.9; border-radius: 3px; box-shadow: inset 0 0 5px rgba(0,0,0,0.3); }
         .selected { transform: scale(1.15); border: 3px solid #2c3e50; }
+
         .controls { margin-top: 20px; display: flex; gap: 10px; align-items: center; }
         button { padding: 10px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 5px; background-color: #2c3e50; color: white; cursor: pointer; transition: 0.2s; }
         button:hover { background-color: #1a252f; }
@@ -57,6 +69,7 @@
         .btn-action:hover { background-color: #d35400; }
         .btn-back { background-color: #7f8c8d; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 </head>
 <body>
 
@@ -77,25 +90,28 @@
     </div>
 
     <script>
+        // 設定雲端 API 網址
         const API_URL = 'https://wallgo-play.onrender.com';
         
+        const boardSize = 13; 
+        let phase = 'placement'; 
+        
+        // --- 狀態與模式設定 ---
         const urlParams = new URLSearchParams(window.location.search);
         const paramPlayers = urlParams.get('players');
-        const mode = urlParams.get('mode'); // 'online' 或 null
-        const roomCode = urlParams.get('room'); // 房間代碼
+        const mode = urlParams.get('mode'); 
+        const roomCode = urlParams.get('room'); 
         
         const isVsAI = (paramPlayers === 'ai'); 
         let playerCount = isVsAI ? 2 : (parseInt(paramPlayers) || 3);
         let aiColor = isVsAI ? 'blue' : null;
         let isProcessing = false; 
 
-        // ====== 🌐 線上連線變數 ======
         let socket = null;
         let myOnlineColor = null; 
         let session = JSON.parse(localStorage.getItem('wallGoSession'));
+        // ----------------------
 
-        const boardSize = 13; 
-        let phase = 'placement'; 
         const allColors = ['red', 'blue', 'yellow', 'green'];
         let activeColors = [];
         let placementQueue = [];
@@ -122,30 +138,25 @@
         const onlineIdentityDisplay = document.getElementById('online-identity-display');
 
         const colorMap = {
-            'red': { text: '紅色', color: 'var(--color-red)', icon: '🔴' },
-            'blue': { text: '藍色', color: 'var(--color-blue)', icon: '🔵' },
-            'yellow': { text: '黃色', color: 'var(--color-yellow)', icon: '🟡' },
-            'green': { text: '綠色', color: 'var(--color-green)', icon: '🟢' }
+            'red': { color: 'var(--color-red)', icon: '🔴' },
+            'blue': { color: 'var(--color-blue)', icon: '🔵' },
+            'yellow': { color: 'var(--color-yellow)', icon: '🟡' },
+            'green': { color: 'var(--color-green)', icon: '🟢' }
         };
 
-        if (isVsAI) colorMap['blue'].text = '藍色 (AI)';
-        
         // ================= 🌐 WebSocket 連線邏輯 =================
         if (mode === 'online') {
-            document.getElementById('btn-reset').style.display = 'none'; // 線上模式隱藏重新開始
+            document.getElementById('btn-reset').style.display = 'none'; 
             socket = io(API_URL);
             
             socket.emit('join_game_room', { room_code: roomCode, user_id: session.id });
 
-            // 接收伺服器分配的顏色
             socket.on('init_game', (data) => {
                 myOnlineColor = data.my_color;
-                onlineIdentityDisplay.innerText = `你被分配到的陣營是：${colorMap[myOnlineColor].icon} ${colorMap[myOnlineColor].text}`;
-                colorMap[myOnlineColor].text += " (你)";
+                onlineIdentityDisplay.innerText = `你被分配到的陣營是：${colorMap[myOnlineColor].icon} ${getDisplayName(myOnlineColor)} (你)`;
                 updateUI();
             });
 
-            // 接收別人傳來的遊戲狀態
             socket.on('update_board', (data) => {
                 pieces = data.pieces;
                 walls = new Map(data.walls);
@@ -159,17 +170,16 @@
                 playerTimes = data.playerTimes;
                 
                 render();
-                autoCheckEndGame(false); // 同步檢查是否結束
+                autoCheckEndGame(false); 
             });
         }
 
-        // 把當前畫面狀態廣播給房間裡的其他人
         function broadcastGameState() {
             if (mode !== 'online') return;
             socket.emit('game_action', {
                 room_code: roomCode,
                 pieces: pieces,
-                walls: Array.from(walls.entries()), // Map 無法透過 JSON 傳遞，需轉成 Array
+                walls: Array.from(walls.entries()), 
                 territories: Array.from(territories.entries()),
                 phase: phase,
                 turnIndex: turnIndex,
@@ -181,6 +191,14 @@
             });
         }
         // =========================================================
+
+        function getDisplayName(colorCode) {
+            if(colorCode === 'red') return '紅色';
+            if(colorCode === 'blue') return '藍色';
+            if(colorCode === 'yellow') return '黃色';
+            if(colorCode === 'green') return '綠色';
+            return '';
+        }
 
         function backToMenu() { window.location.href = 'index.html'; }
 
@@ -233,7 +251,9 @@
                 if (playerTimes[currentColor] <= 0) {
                     clearInterval(clockInterval); 
                     
-                    // 若為線上模式，只有該顏色的本人可以觸發「超時代管」來避免重複發送
+                    let baseName = getDisplayName(currentColor);
+                    let suffix = (mode === 'online' && currentColor === myOnlineColor) || (!mode && currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
+                    
                     if (mode === 'online') {
                         if (currentColor === myOnlineColor) {
                             setTimeout(() => {
@@ -244,7 +264,7 @@
                         }
                     } else {
                         setTimeout(() => {
-                            alert(`⏳ 時間耗盡！系統已自動為 ${colorMap[currentColor].text} 隨機執行動作並跳過回合。`);
+                            alert(`⏳ 時間耗盡！系統已自動為 ${baseName}${suffix} 隨機執行動作並跳過回合。`);
                             executeAILogic(currentColor); 
                         }, 50);
                     }
@@ -325,7 +345,7 @@
             
             if (isVsAI && currentColor === aiColor) {
                 isProcessing = true; 
-                instructionDisplay.innerText = "🤖 AI 正在思考最佳路徑...";
+                instructionDisplay.innerText = "🤖 電腦正在思考最佳路徑...";
                 setTimeout(() => {
                     executeAILogic(currentColor);
                 }, 800);
@@ -399,8 +419,11 @@
 
             if(isProcessing && isVsAI && currentColor === aiColor) return; 
 
+            let baseName = getDisplayName(currentColor);
+            let suffix = (mode === 'online' && currentColor === myOnlineColor) || (!mode && currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
+
             let phaseText = phase === 'placement' ? '放置階段' : phase === 'movement' ? '移動階段' : phase === 'wall_building' ? '建牆階段 (必須相鄰建牆)' : '破牆階段';
-            turnDisplay.innerText = `當前回合：${colorMap[currentColor].text} (${phaseText})`;
+            turnDisplay.innerText = `當前回合：${baseName}${suffix} (${phaseText})`;
             turnDisplay.style.color = colorMap[currentColor].color;
 
             if (phase === 'placement') instructionDisplay.innerText = "請點擊空白棋格放置棋子";
@@ -408,12 +431,14 @@
             else if (phase === 'wall_building') instructionDisplay.innerText = "請在剛移動的棋子四周放置一道牆";
             else if (phase === 'wall_breaking') instructionDisplay.innerText = "請選擇場上一道牆將其拆除";
 
-            let statusArray = activeColors.map(c => `${colorMap[c].text}(${playersInfo[c].hasBreaker?"可":"無"})`);
+            let statusArray = activeColors.map(c => {
+                let name = getDisplayName(c) + (isVsAI && c === aiColor ? '(AI)' : '');
+                return `${name}(${playersInfo[c].hasBreaker?"可":"無"})`;
+            });
             breakerDisplay.innerText = `破牆者：` + statusArray.join(" | ");
             btnBreaker.disabled = (phase !== 'movement' || stepsTaken > 0 || !playersInfo[currentColor].hasBreaker);
         }
 
-        // 動作檢查：確認是否輪到自己 (線上模式專用)
         function checkMyTurn(currentColor) {
             if (mode === 'online') {
                 if (myOnlineColor === null) { alert("尚未獲取陣營分配，請稍候..."); return false; }
@@ -470,7 +495,7 @@
 
             if (actionMade) {
                 render();
-                broadcastGameState(); // 廣播給對手
+                broadcastGameState(); 
                 if (mode !== 'online') checkAITurn(); 
             }
         }
@@ -488,7 +513,7 @@
                 if (isValid && !walls.has(`${r},${c}`)) {
                     walls.set(`${r},${c}`, currentColor); 
                     endTurn(); 
-                    return; // endTurn 內已有廣播，直接 return
+                    return; 
                 }
             } else if (phase === 'wall_breaking') {
                 if (walls.has(`${r},${c}`)) {
@@ -560,6 +585,7 @@
             return validWalls;
         }
 
+        // ================= 🏆 結算與畫面排序邏輯 =================
         function autoCheckEndGame(forceCalculate = false) {
             if (phase === 'placement' && !forceCalculate) return;
             let gameOver = forceCalculate; 
@@ -615,19 +641,39 @@
             if (gameOver) {
                 clearInterval(clockInterval); phase = 'game_over'; isProcessing = false; render();
                 let reason = forceCalculate ? "因有玩家單步思考超時而強制提前結算" : (!anyPlayerCanMove ? "所有玩家皆無法再進行合法操作 (僵局)" : "所有陣營已被完全封閉切割");
-                let scoreText = activeColors.map(c => `${colorMap[c].icon} ${colorMap[c].text}領土：${scores[c]} 格`).join('\n');
                 
-                let maxScore = -1; let winners = [];
-                activeColors.forEach(c => {
-                    if (scores[c] > maxScore) { maxScore = scores[c]; winners = [colorMap[c].text.replace(' (你)','')]; } 
-                    else if (scores[c] === maxScore) winners.push(colorMap[c].text.replace(' (你)','')); 
+                // 1. 依據分數由大到小排序陣營
+                let sortedColors = [...activeColors].sort((a, b) => scores[b] - scores[a]);
+                
+                // 2. 產生乾淨且完美對齊截圖的排行榜文字
+                let scoreText = sortedColors.map((c, idx) => {
+                    let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
+                    let baseName = getDisplayName(c);
+                    let suffix = isMe ? ' (你)' : (isVsAI && c === aiColor ? ' (AI)' : '');
+                    
+                    return `第 ${idx + 1} 名： ${colorMap[c].icon} ${baseName}${suffix} 領土：${scores[c]} 格`;
+                }).join('\n');
+                
+                let maxScore = scores[sortedColors[0]]; 
+                
+                // 3. 處理存入歷史紀錄的標籤
+                let winners = sortedColors.filter(c => scores[c] === maxScore).map(c => {
+                    let baseName = getDisplayName(c);
+                    let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
+                    return baseName + (isMe ? '(你)' : '');
                 });
                 
+                let detailParts = sortedColors.map(c => {
+                    let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
+                    let colorChar = getDisplayName(c)[0]; // 取第一個字 (紅、藍、黃、綠)
+                    return `${colorChar}${isMe ? '(你)' : ''}:${scores[c]}`;
+                });
+
                 const historyRecord = {
                     date: new Date().toLocaleString('zh-TW'),
                     winner: winners.join(' & '), 
                     winScore: maxScore,
-                    details: activeColors.map(c => `${colorMap[c].text[0]}:${scores[c]}`).join(' | ')
+                    details: detailParts.join(' | ')
                 };
                 
                 if (session) {
@@ -636,8 +682,12 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(historyRecord)
-                    }).then(res => res.json()).catch(err => console.error(err));
+                    }).then(res => res.json())
+                      .then(data => console.log("戰績已成功同步至 MongoDB！"))
+                      .catch(err => console.error("戰績上傳失敗", err));
                 }
+                
+                // 彈出最終結算視窗
                 setTimeout(() => { alert(`🏆 遊戲結束！${reason}。\n\n${scoreText}`); }, 150);
             }
         }
