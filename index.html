@@ -379,9 +379,20 @@
             const roomCode = document.getElementById('join-room-input').value.trim();
             if (roomCode.length !== 4) return alert("請輸入 4 位數字的房間代碼！");
             const userInfo = { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar };
+            
+            // 💡 關鍵修復：在發送請求前，先把代碼記錄到自己的瀏覽器中
+            currentRoomCode = roomCode;
+            
             socket.emit('join_room', { room_code: roomCode, user_info: userInfo });
         }
 
+        // ...中間的 createRoom 跟 leaveRoom 不動...
+
+        socket.on('join_error', (data) => {
+            alert(data.message);
+            // 💡 加入失敗時，要把剛才記錄的代碼清空，以免卡住
+            currentRoomCode = null; 
+        });
         function leaveRoom() {
             if (currentRoomCode) {
                 socket.emit('leave_room', { room_code: currentRoomCode, user_id: currentUser.id });
