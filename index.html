@@ -50,7 +50,7 @@
         .forgot-pwd-link { display: block; text-align: right; color: var(--primary); font-size: 13px; text-decoration: none; margin-top: -10px; margin-bottom: 20px; cursor: pointer; transition: 0.2s; font-weight: 500;}
         .forgot-pwd-link:hover { color: var(--text-main); text-decoration: underline; }
 
-        /* 💡 遊戲主介面 (極致置中) */
+        /* 遊戲主介面 (極致置中) */
         .page-container { display: none; justify-content: center; align-items: center; width: 100%; height: 100vh; padding: 20px; box-sizing: border-box; }
         
         .center-section { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; max-width: 420px; animation: fadeIn 0.5s ease-out; }
@@ -77,7 +77,7 @@
         .online-btn { padding: 18px; font-size: 18px; font-weight: bold; color: white; background: var(--btn-brown-light); border-radius: 10px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(156, 128, 101, 0.2); }
         .online-btn:hover { background: var(--text-main); transform: translateY(-2px); }
 
-        /* 💡 右上角：展開側邊欄的按鈕 */
+        /* 右上角：展開側邊欄的按鈕 */
         .menu-toggle-btn {
             position: fixed;
             top: 30px;
@@ -97,11 +97,11 @@
         }
         .menu-toggle-btn:hover { background-color: var(--btn-beige); transform: translateY(-2px); }
 
-        /* 💡 側邊滑出選單 (抽屜式) */
+        /* 側邊滑出選單 (抽屜式) */
         .right-sidebar {
             position: fixed;
             top: 0;
-            right: -450px; /* 初始隱藏於畫面右外側 */
+            right: -450px; 
             width: 380px;
             height: 100vh;
             background: var(--bg-color);
@@ -127,7 +127,6 @@
         }
         .close-sidebar-btn:hover { color: var(--danger); transform: scale(1.1); }
 
-        /* 選單內的頁籤與內容 */
         .nav-tabs { display: flex; background: var(--card-bg); border-radius: 12px; padding: 6px; border: 1px solid var(--card-border); box-shadow: 0 5px 20px rgba(74, 54, 35, 0.05); }
         .nav-btn { flex: 1; padding: 12px 5px; font-size: 14px; font-weight: bold; color: var(--text-sub); background: transparent; border-radius: 8px; transition: 0.2s;}
         .nav-btn:hover { color: var(--text-main); }
@@ -164,13 +163,15 @@
         .info-label { color: var(--text-sub); }
         .info-value { font-weight: bold; color: var(--text-main); }
 
-        /* 將規則按鈕移入選單最下方 */
         .rules-btn { padding: 16px; font-size: 16px; font-weight: bold; color: white; background: var(--primary); border-radius: 10px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(140, 115, 90, 0.2); flex-shrink: 0; margin-top: auto;}
         .rules-btn:hover { background: var(--text-main); transform: translateY(-2px); }
 
-        /* 彈窗樣式 */
+        /* 💡 彈窗樣式修復：加入最大高度與自適應滾動，防止上下被裁切 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(74, 54, 35, 0.7); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(5px); }
-        .modal-content { background: var(--card-bg); color: var(--text-main); padding: 35px 45px; border-radius: 12px; width: 85%; max-width: 500px; text-align: left; box-shadow: 0 20px 50px rgba(74, 54, 35, 0.3); border: 1px solid var(--card-border); transform: translateY(-20px); animation: slideDown 0.3s forwards; }
+        .modal-content { background: var(--card-bg); color: var(--text-main); padding: 35px 45px; border-radius: 12px; width: 85%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; text-align: left; box-shadow: 0 20px 50px rgba(74, 54, 35, 0.3); border: 1px solid var(--card-border); transform: translateY(-20px); animation: slideDown 0.3s forwards; }
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-thumb { background: #d0c5b5; border-radius: 3px; }
+        
         @keyframes slideDown { to { transform: translateY(0); } }
         .modal-content h2 { text-align: center; border-bottom: 1px solid var(--card-border); padding-bottom: 15px; margin-bottom: 25px; font-size: 26px;}
         
@@ -285,10 +286,10 @@
         </div>
     </div>
 
-    <!-- 💡 右上角：開啟選單按鈕 -->
+    <!-- 右上角：開啟選單按鈕 -->
     <button id="main-menu-btn" class="menu-toggle-btn" onclick="toggleSidebar()">☰ 選單</button>
 
-    <!-- 💡 遊戲主介面：極致置中 -->
+    <!-- 遊戲主介面：極致置中 -->
     <div class="page-container" id="main-container">
         <div class="center-section">
             <h1 class="menu-title">WALL GO</h1>
@@ -312,7 +313,7 @@
         </div>
     </div>
 
-    <!-- 💡 側邊滑出選單 (抽屜) -->
+    <!-- 側邊滑出選單 (抽屜) -->
     <div class="right-sidebar" id="right-sidebar">
         <button class="close-sidebar-btn" onclick="toggleSidebar()">✖</button>
         
@@ -362,7 +363,7 @@
             </div>
         </div>
 
-        <!-- 💡 規則按鈕收納在選單最底下 -->
+        <!-- 規則按鈕收納在選單最底下 -->
         <button class="rules-btn" onclick="openModal('rules-modal')">📄 查看遊戲規則</button>
     </div>
 
@@ -771,12 +772,12 @@
                 currentUser = JSON.parse(savedSession);
                 document.getElementById('auth-page').style.display = 'none';
                 document.getElementById('main-container').style.display = 'flex';
-                document.getElementById('main-menu-btn').style.display = 'block'; // 顯示選單按鈕
+                document.getElementById('main-menu-btn').style.display = 'block'; 
                 updateProfileUI();
             } else {
                 document.getElementById('auth-page').style.display = 'flex';
                 document.getElementById('main-container').style.display = 'none';
-                document.getElementById('main-menu-btn').style.display = 'none'; // 隱藏選單按鈕
+                document.getElementById('main-menu-btn').style.display = 'none'; 
             }
         }
 
