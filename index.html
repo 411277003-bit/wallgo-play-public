@@ -9,7 +9,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 
         :root {
-            /* 🌲 統一木質調配色 */
             --bg-color: #f5f0ea;         
             --card-bg: #ffffff;          
             --card-border: #e0d5c1;      
@@ -50,7 +49,7 @@
         .forgot-pwd-link { display: block; text-align: right; color: var(--primary); font-size: 13px; text-decoration: none; margin-top: -10px; margin-bottom: 20px; cursor: pointer; transition: 0.2s; font-weight: 500;}
         .forgot-pwd-link:hover { color: var(--text-main); text-decoration: underline; }
 
-        /* 遊戲主介面 (極致置中) */
+        /* 遊戲主介面 */
         .page-container { display: none; justify-content: center; align-items: center; width: 100%; height: 100vh; padding: 20px; box-sizing: border-box; }
         
         .center-section { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; max-width: 420px; animation: fadeIn 0.5s ease-out; }
@@ -166,7 +165,7 @@
         .rules-btn { padding: 16px; font-size: 16px; font-weight: bold; color: white; background: var(--primary); border-radius: 10px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(140, 115, 90, 0.2); flex-shrink: 0; margin-top: auto;}
         .rules-btn:hover { background: var(--text-main); transform: translateY(-2px); }
 
-        /* 💡 彈窗樣式修復：加入最大高度與自適應滾動，防止上下被裁切 */
+        /* 彈窗樣式 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(74, 54, 35, 0.7); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(5px); }
         .modal-content { background: var(--card-bg); color: var(--text-main); padding: 35px 45px; border-radius: 12px; width: 85%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; text-align: left; box-shadow: 0 20px 50px rgba(74, 54, 35, 0.3); border: 1px solid var(--card-border); transform: translateY(-20px); animation: slideDown 0.3s forwards; }
         .modal-content::-webkit-scrollbar { width: 6px; }
@@ -221,7 +220,6 @@
         .room-player-name { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
         .room-player-id { font-size: 13px; color: var(--text-sub); }
 
-        /* 手機版適應 */
         @media (max-width: 600px) {
             .menu-toggle-btn { top: 15px; right: 15px; padding: 10px 18px; font-size: 14px; }
             .right-sidebar { width: 100vw; right: -100vw; }
@@ -286,10 +284,8 @@
         </div>
     </div>
 
-    <!-- 右上角：開啟選單按鈕 -->
     <button id="main-menu-btn" class="menu-toggle-btn" onclick="toggleSidebar()">☰ 選單</button>
 
-    <!-- 遊戲主介面：極致置中 -->
     <div class="page-container" id="main-container">
         <div class="center-section">
             <h1 class="menu-title">WALL GO</h1>
@@ -313,7 +309,7 @@
         </div>
     </div>
 
-    <!-- 側邊滑出選單 (抽屜) -->
+    <!-- 側邊滑出選單 -->
     <div class="right-sidebar" id="right-sidebar">
         <button class="close-sidebar-btn" onclick="toggleSidebar()">✖</button>
         
@@ -326,7 +322,8 @@
         <div class="tab-content-panel">
             <div id="tab-history" class="tab-pane active">
                 <div style="text-align: right; margin-bottom: 15px; font-size: 13px; color: var(--text-sub);">
-                    總遊玩：<span id="total-games" style="color: var(--text-main); font-weight: bold;">0 場</span>
+                    總遊玩：<span id="total-games" style="color: var(--text-main); font-weight: bold;">0 場</span> |
+                    勝率：<span id="win-rate" style="color: var(--color-red); font-weight: bold;">0%</span>
                 </div>
                 <div id="history-list" class="history-list"></div>
                 <button class="clear-btn" onclick="clearHistory()">清除所有紀錄</button>
@@ -337,7 +334,7 @@
                     <div class="avatar-circle" id="display-avatar">👤</div>
                     <h2 class="account-name" id="display-name">載入中...</h2>
                     <div class="account-id" id="display-id">ID: 載入中...</div>
-                    <span class="account-status">線上 (Online)</span>
+                    <div class="account-status">線上 (Online) • 勝率: <span id="account-win-rate">0%</span></div>
                 </div>
                 <div class="account-menu">
                     <button class="menu-action-btn" onclick="openProfileEditor()">
@@ -356,18 +353,18 @@
                 <h3 style="text-align: center; margin-top: 0; font-family: var(--font-serif); font-size: 20px;">系統資訊</h3>
                 <div style="margin-bottom: 25px; border-bottom: 1px solid var(--card-border);"></div>
                 <div class="info-row"><span class="info-label">遊戲名稱</span><span class="info-value">Wall Go 木質版</span></div>
-                <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v10.0 極致美學版</span></div>
+                <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v11.0 完美通知版</span></div>
                 <p style="font-size: 13px; color: var(--primary); text-align: center; margin-top: 30px; font-weight: 500;">
                     已成功連接至雲端資料庫
                 </p>
             </div>
         </div>
 
-        <!-- 規則按鈕收納在選單最底下 -->
         <button class="rules-btn" onclick="openModal('rules-modal')">📄 查看遊戲規則</button>
     </div>
 
-    <!-- 線上房間介面 -->
+    <!-- 彈出視窗：房間、好友、資料、規則等 (維持原本程式碼即可) -->
+    <!-- (這裡省略以節省篇幅，保留你原本的 HTML 結構) -->
     <div id="room-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px; text-align: center;">
             <div id="room-ui-main">
@@ -447,7 +444,6 @@
         </div>
     </div>
 
-    <!-- ================= JavaScript 核心邏輯 ================= -->
     <script>
         let currentUser = null;
         let selectedPlayers = 3;
@@ -456,7 +452,6 @@
         const socket = io(API_URL);
         let currentRoomCode = null;
 
-        // 控制側邊欄開關
         function toggleSidebar() {
             const sidebar = document.getElementById('right-sidebar');
             sidebar.classList.toggle('open');
@@ -607,9 +602,12 @@
             } catch (error) { alert("無法連線到伺服器，請確認後端已成功啟動！"); }
         }
 
+        // 💡 修改載入戰績邏輯：加入勝率計算
         async function loadHistory() {
             const listEl = document.getElementById('history-list');
             const totalGamesEl = document.getElementById('total-games');
+            const winRateEl = document.getElementById('win-rate');
+            const accountWinRateEl = document.getElementById('account-win-rate');
             if (!currentUser) return;
 
             try {
@@ -619,13 +617,22 @@
                 const result = await response.json();
                 if (result.success) {
                     const history = result.history;
-                    if (totalGamesEl) totalGamesEl.innerText = `${history.length} 場`;
+                    let wins = 0;
+
                     if (history.length === 0) {
+                        if (totalGamesEl) totalGamesEl.innerText = `0 場`;
+                        if (winRateEl) winRateEl.innerText = `0%`;
+                        if (accountWinRateEl) accountWinRateEl.innerText = `0%`;
                         listEl.innerHTML = '<div class="history-empty">尚無比賽紀錄<br>趕快開始第一場對戰吧！</div>';
                         return;
                     }
+                    
                     listEl.innerHTML = '';
                     history.slice().reverse().forEach(record => {
+                        // 如果贏家字串中包含 "(你)"，代表是自己獲勝
+                        if (record.winner.includes('(你)')) {
+                            wins++;
+                        }
                         listEl.innerHTML += `
                             <div class="history-item">
                                 <div class="history-date">${record.date}</div>
@@ -633,6 +640,12 @@
                                 <div class="history-details">${record.details}</div>
                             </div>`;
                     });
+
+                    // 更新總勝率
+                    let winRate = Math.round((wins / history.length) * 100);
+                    if (totalGamesEl) totalGamesEl.innerText = `${history.length} 場`;
+                    if (winRateEl) winRateEl.innerText = `${winRate}%`;
+                    if (accountWinRateEl) accountWinRateEl.innerText = `${winRate}%`;
                 }
             } catch (error) { listEl.innerHTML = '<div class="history-empty" style="color:var(--danger);">戰績載入失敗，請檢查連線。</div>'; }
         }
