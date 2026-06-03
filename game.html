@@ -41,6 +41,7 @@
             gap: 20px;
         }
 
+        /* 左側：狀態與控制按鈕區 */
         .left-sidebar {
             display: flex;
             flex-direction: column;
@@ -83,19 +84,21 @@
         .btn-back { background-color: transparent; border: 1px solid #8c735a; color: #5c4530; }
         .btn-back:hover { background-color: #ebe4d8; color: var(--text-main); }
 
+        /* 💡 中間：棋盤區域 */
         .board-container {
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             height: 100%;
+            max-width: 85vh; 
         }
 
         .board { 
-            --board-size: min(100%, 92vh); 
-            width: var(--board-size);
-            height: var(--board-size);
-            
+            /* 💡 電腦版安全寫法 */
+            width: 85vh;
+            height: 85vh;
+            max-width: 100%;
             background-color: #e0d5c1; 
             padding: 12px; 
             border-radius: 16px; 
@@ -152,7 +155,6 @@
         }
         .chat-toggle-btn:hover { background-color: #3275ad; transform: translateY(-3px); }
 
-        /* 💡 紅點通知樣式 */
         .chat-badge {
             position: absolute;
             top: -5px;
@@ -163,7 +165,7 @@
             padding: 4px 8px;
             font-size: 12px;
             font-weight: bold;
-            display: none; /* 預設隱藏 */
+            display: none; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             animation: bounce 0.4s ease-in-out infinite alternate;
         }
@@ -311,18 +313,40 @@
             font-weight: bold;
         }
 
+        /* 💡 響應式：手機或窄螢幕時，徹底適應螢幕寬度且防溢出 */
         @media (max-width: 900px) {
-            body { flex-direction: column; padding: 15px; gap: 20px; overflow-y: auto; height: auto; justify-content: flex-start;}
-            .left-sidebar { width: 100%; max-width: 500px; height: auto; }
+            body { 
+                flex-direction: column; 
+                padding: 10px; 
+                gap: 15px; 
+                overflow-y: auto; 
+                overflow-x: hidden; /* 徹底禁止左右滑動 */
+                height: auto; 
+                justify-content: flex-start;
+            }
+            .left-sidebar { width: 100%; max-width: 600px; height: auto; }
             .right-spacer { display: none; }
-            .timer-container { flex-direction: row; flex-wrap: wrap; justify-content: center;}
-            .timer-box { flex: 1; min-width: 100px; justify-content: center;}
-            .controls { flex-direction: row; }
-            .board-container { max-width: 100%; padding-bottom: 80px;}
-            .board { --board-size: min(100%, 90vw); }
-            .chat-area { width: 85vw; right: -100vw;}
-            .chat-area.open { right: 15px; }
-            .chat-toggle-btn { bottom: 15px; right: 15px; padding: 10px 18px; font-size: 14px; }
+            .timer-container { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 5px;}
+            .timer-box { flex: 1; min-width: 45%; justify-content: center;}
+            .controls { flex-direction: row; flex-wrap: wrap; gap: 8px;}
+            .controls button { flex: 1; min-width: 30%; padding: 12px 10px; font-size: 13px;}
+            .board-container { 
+                width: 100%; 
+                max-width: 100%; 
+                padding-bottom: 80px; /* 留給下方聊天室按鈕的空間 */
+            }
+            .board { 
+                /* 💡 手機版強制依照寬度等比例縮放 */
+                width: 94vw; 
+                height: 94vw; 
+                max-width: 500px; 
+                max-height: 500px;
+                padding: 8px; /* 縮小內距讓格子更大 */
+                border-radius: 12px;
+            }
+            .chat-area { width: 85vw; right: -100vw; z-index: 2000;}
+            .chat-area.open { right: 10px; }
+            .chat-toggle-btn { bottom: 15px; right: 15px; padding: 12px 20px; font-size: 14px; z-index: 1999;}
         }
     </style>
 </head>
@@ -354,7 +378,6 @@
 
     <div class="right-spacer"></div>
 
-    <!-- 💡 浮動按鈕加入通知紅點 -->
     <button class="chat-toggle-btn" onclick="toggleChat()">
         💬 展開聊天室
         <span id="chat-badge" class="chat-badge">!</span>
@@ -482,11 +505,9 @@
             });
         }
 
-        // ================= 💬 聊天室邏輯 =================
         function toggleChat() {
             const chatArea = document.getElementById('chat-area');
             chatArea.classList.toggle('open');
-            // 💡 打開聊天室時，隱藏紅點
             if (chatArea.classList.contains('open')) {
                 document.getElementById('chat-badge').style.display = 'none';
             }
@@ -569,14 +590,11 @@
             box.innerHTML += `<div class="chat-msg"><strong style="color:${colorHex}">${name}:</strong> ${msg}</div>`;
             box.scrollTop = box.scrollHeight;
             
-            // 💡 若聊天室沒開，且不是自己發的、不是系統廣播，就跳出紅點
             const chatArea = document.getElementById('chat-area');
             if (!chatArea.classList.contains('open') && name !== myName && name !== '系統') {
                 document.getElementById('chat-badge').style.display = 'block';
             }
         }
-
-        // =================================================
 
         function broadcastGameState() {
             if (mode !== 'online') return;
