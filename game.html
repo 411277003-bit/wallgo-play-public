@@ -90,13 +90,11 @@
     </div>
 
     <script>
-        // 設定雲端 API 網址
         const API_URL = 'https://wallgo-play.onrender.com';
         
         const boardSize = 13; 
         let phase = 'placement'; 
         
-        // --- 狀態與模式設定 ---
         const urlParams = new URLSearchParams(window.location.search);
         const paramPlayers = urlParams.get('players');
         const mode = urlParams.get('mode'); 
@@ -110,7 +108,6 @@
         let socket = null;
         let myOnlineColor = null; 
         let session = JSON.parse(localStorage.getItem('wallGoSession'));
-        // ----------------------
 
         const allColors = ['red', 'blue', 'yellow', 'green'];
         let activeColors = [];
@@ -144,7 +141,6 @@
             'green': { color: 'var(--color-green)', icon: '🟢' }
         };
 
-        // ================= 🌐 WebSocket 連線邏輯 =================
         if (mode === 'online') {
             document.getElementById('btn-reset').style.display = 'none'; 
             socket = io(API_URL);
@@ -190,7 +186,6 @@
                 playerTimes: playerTimes
             });
         }
-        // =========================================================
 
         function getDisplayName(colorCode) {
             if(colorCode === 'red') return '紅色';
@@ -301,32 +296,53 @@
                 movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             } else {
-                if (playersInfo[color].hasBreaker && walls.size > 0 && Math.random() < 0.15) {
-                    let wallKeys = Array.from(walls.keys());
-                    walls.delete(wallKeys[Math.floor(Math.random() * wallKeys.length)]);
+                // 💡 AI 只打掉自己建的牆壁
+                let myPieces = pieces.map((p, idx) => ({...p, idx})).filter(p => p.color === color);
+                let totalMobility = 0;
+                myPieces.forEach(p => totalMobility += getValidMoves(p.r, p.c).length);
+                
+                let myWalls = Array.from(walls.entries()).filter(([k, v]) => v === color);
+                if (playersInfo[color].hasBreaker && myWalls.length > 0 && totalMobility <= 2) {
+                    let randomWallKey = myWalls[Math.floor(Math.random() * myWalls.length)][0];
+                    walls.delete(randomWallKey);
                     playersInfo[color].hasBreaker = false;
                 }
 
-                let validActions = [];
-                let myPieces = pieces.filter(p => p.color === color);
+                let bestAction = null;
+                let bestScore = -Infinity;
+
                 myPieces.forEach(p => {
                     let moves = getValidMoves(p.r, p.c);
                     moves.forEach(m => {
                         let oldR = p.r; let oldC = p.c;
                         p.r = m.r; p.c = m.c; 
                         let vWalls = getValidWalls(m.r, m.c); 
+                        
                         vWalls.forEach(w => {
-                            validActions.push({ pIdx: pieces.indexOf(p), mr: m.r, mc: m.c, wr: w.r, wc: w.c });
+                            walls.set(`${w.r},${w.c}`, color);
+                            let score = evaluateBoard(color);
+                            score += Math.random() * 0.1; 
+
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestAction = { pIdx: p.idx, mr: m.r, mc: m.c, wr: w.r, wc: w.c };
+                            }
+                            walls.delete(`${w.r},${w.c}`);
                         });
                         p.r = oldR; p.c = oldC; 
                     });
                 });
 
-                if (validActions.length > 0) {
-                    let action = validActions[Math.floor(Math.random() * validActions.length)];
-                    pieces[action.pIdx].r = action.mr;
-                    pieces[action.pIdx].c = action.mc;
-                    walls.set(`${action.wr},${action.wc}`, color);
+                if (bestAction) {
+                    pieces[bestAction.pIdx].r = bestAction.mr;
+                    pieces[bestAction.pIdx].c = bestAction.mc;
+                    walls.set(`${bestAction.wr},${bestAction.wc}`, color);
+                } else {
+                    if (myPieces.length > 0) {
+                        let fallbackP = myPieces[0];
+                        let wMoves = getValidWalls(fallbackP.r, fallbackP.c);
+                        if (wMoves.length > 0) walls.set(`${wMoves[0].r},${wMoves[0].c}`, color);
+                    }
                 }
                 
                 movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
@@ -337,6 +353,26 @@
             autoCheckEndGame(false); 
             render();
             checkAITurn(); 
+        }
+
+        function evaluateBoard(aiColor) {
+            let score = 0;
+            let aiMobility = 0;
+            let oppMobility = 0;
+
+            pieces.forEach(p => {
+                let movesCount = getValidMoves(p.r, p.c).length;
+                if (p.color === aiColor) {
+                    aiMobility += movesCount;
+                    score -= (Math.abs(p.r - 6) + Math.abs(p.c - 6)) * 0.5;
+                } else {
+                    oppMobility += movesCount;
+                }
+            });
+
+            score += (aiMobility * 2.5) - oppMobility;
+            if (aiMobility === 0) score -= 10000;
+            return score;
         }
 
         function checkAITurn() {
@@ -355,6 +391,8 @@
         }
 
         function render() {
+            let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
+
             document.querySelectorAll('.grid-item').forEach(el => {
                 el.innerHTML = '';
                 el.classList.remove('highlight', 'highlight-wall', 'wall-placed', 'selected', 'wall-red', 'wall-blue', 'wall-yellow', 'wall-green', 'territory-red', 'territory-blue', 'territory-yellow', 'territory-green');
@@ -391,9 +429,12 @@
                 const p = pieces[movedPieceIndex];
                 getValidWalls(p.r, p.c).forEach(m => getEl(m.r, m.c)?.classList.add('highlight-wall'));
             } else if (phase === 'wall_breaking') {
+                // 💡 在破牆階段，只高亮顯示屬於當前玩家的牆壁
                 walls.forEach((color, wKey) => {
-                    const [wr, wc] = wKey.split(',').map(Number);
-                    getEl(wr, wc)?.classList.add('highlight-wall');
+                    if (color === currentColor) {
+                        const [wr, wc] = wKey.split(',').map(Number);
+                        getEl(wr, wc)?.classList.add('highlight-wall');
+                    }
                 });
             }
             updateUI();
@@ -429,7 +470,7 @@
             if (phase === 'placement') instructionDisplay.innerText = "請點擊空白棋格放置棋子";
             else if (phase === 'movement') instructionDisplay.innerText = selectedPieceIndex === -1 ? "請選擇你的棋子，或使用破牆者" : `請點擊高亮綠格移動 (已走 ${stepsTaken} / 2 步)\n若不想繼續移動，請「再次點擊自己的棋子」確認完成`;
             else if (phase === 'wall_building') instructionDisplay.innerText = "請在剛移動的棋子四周放置一道牆";
-            else if (phase === 'wall_breaking') instructionDisplay.innerText = "請選擇場上一道牆將其拆除";
+            else if (phase === 'wall_breaking') instructionDisplay.innerText = "請選擇場上一道【你建立的牆壁】將其拆除";
 
             let statusArray = activeColors.map(c => {
                 let name = getDisplayName(c) + (isVsAI && c === aiColor ? '(AI)' : '');
@@ -516,12 +557,17 @@
                     return; 
                 }
             } else if (phase === 'wall_breaking') {
+                // 💡 檢查牆壁是否存在且顏色是否為當前玩家
                 if (walls.has(`${r},${c}`)) {
-                    walls.delete(`${r},${c}`);
-                    playersInfo[currentColor].hasBreaker = false; 
-                    phase = 'movement'; 
-                    autoCheckEndGame(false); 
-                    actionMade = true;
+                    if (walls.get(`${r},${c}`) === currentColor) {
+                        walls.delete(`${r},${c}`);
+                        playersInfo[currentColor].hasBreaker = false; 
+                        phase = 'movement'; 
+                        autoCheckEndGame(false); 
+                        actionMade = true;
+                    } else {
+                        alert("只能拆除你自己建立的牆壁！");
+                    }
                 }
             }
 
@@ -537,7 +583,10 @@
             if (!checkMyTurn(currentColor)) return;
 
             if (phase === 'movement' && stepsTaken === 0) {
-                if (walls.size === 0) return alert("場上目前沒有牆壁可供拆除！");
+                // 💡 檢查該名玩家是否在場上有建立任何牆壁
+                let myWalls = Array.from(walls.entries()).filter(([k, v]) => v === currentColor);
+                if (myWalls.length === 0) return alert("場上目前沒有你建立的牆壁可供拆除！");
+                
                 phase = 'wall_breaking'; selectedPieceIndex = -1; 
                 render();
                 broadcastGameState();
@@ -585,7 +634,6 @@
             return validWalls;
         }
 
-        // ================= 🏆 結算與畫面排序邏輯 =================
         function autoCheckEndGame(forceCalculate = false) {
             if (phase === 'placement' && !forceCalculate) return;
             let gameOver = forceCalculate; 
@@ -642,10 +690,8 @@
                 clearInterval(clockInterval); phase = 'game_over'; isProcessing = false; render();
                 let reason = forceCalculate ? "因有玩家單步思考超時而強制提前結算" : (!anyPlayerCanMove ? "所有玩家皆無法再進行合法操作 (僵局)" : "所有陣營已被完全封閉切割");
                 
-                // 1. 依據分數由大到小排序陣營
                 let sortedColors = [...activeColors].sort((a, b) => scores[b] - scores[a]);
                 
-                // 2. 產生乾淨且完美對齊截圖的排行榜文字
                 let scoreText = sortedColors.map((c, idx) => {
                     let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
                     let baseName = getDisplayName(c);
@@ -656,7 +702,6 @@
                 
                 let maxScore = scores[sortedColors[0]]; 
                 
-                // 3. 處理存入歷史紀錄的標籤
                 let winners = sortedColors.filter(c => scores[c] === maxScore).map(c => {
                     let baseName = getDisplayName(c);
                     let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
@@ -665,7 +710,7 @@
                 
                 let detailParts = sortedColors.map(c => {
                     let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
-                    let colorChar = getDisplayName(c)[0]; // 取第一個字 (紅、藍、黃、綠)
+                    let colorChar = getDisplayName(c)[0]; 
                     return `${colorChar}${isMe ? '(你)' : ''}:${scores[c]}`;
                 });
 
@@ -687,7 +732,6 @@
                       .catch(err => console.error("戰績上傳失敗", err));
                 }
                 
-                // 彈出最終結算視窗
                 setTimeout(() => { alert(`🏆 遊戲結束！${reason}。\n\n${scoreText}`); }, 150);
             }
         }
