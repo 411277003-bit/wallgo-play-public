@@ -1,3 +1,4 @@
+# 👉 這兩行必須在所有程式碼的最前面，確保 eventlet 引擎能順利驅動非同步連線！
 import eventlet
 eventlet.monkey_patch()
 
@@ -76,6 +77,21 @@ def login():
     else:
         return jsonify({"success": False, "message": "找不到此玩家 ID"})
 
+# 🔐 新增：重設密碼 API (讓忘記密碼功能可以真正覆蓋資料庫中的密碼)
+@app.route('/api/reset_password', methods=['POST'])
+def reset_password():
+    data = request.json
+    user_id = data.get('id')
+    new_password = data.get('new_password')
+    
+    user = users_col.find_one({"id": user_id})
+    if user:
+        users_col.update_one({"id": user_id}, {"$set": {"password": new_password}})
+        return jsonify({"success": True, "message": "密碼重設成功！請使用新密碼重新登入。"})
+    else:
+        return jsonify({"success": False, "message": "找不到此玩家 ID！請確認輸入正確。"})
+
+
 # ================= 戰績 API =================
 @app.route('/api/save_history', methods=['POST'])
 def save_history():
@@ -102,6 +118,7 @@ def clear_history():
     user_id = data.get('user_id')
     history_col.delete_many({"user_id": user_id})
     return jsonify({"success": True})
+
 
 # ================= 好友系統 API =================
 @app.route('/api/send_friend_request', methods=['POST'])
@@ -194,6 +211,7 @@ def handle_friend_request():
     
     return jsonify({"success": False, "message": "無效的操作"})
 
+
 # ================= 即時連線 (WebSocket) 房間系統 =================
 @socketio.on('create_room')
 def handle_create_room(data):
@@ -246,21 +264,34 @@ def handle_join_game_room(data):
     
     # 根據加入房間的順序，分配紅、藍、黃、綠給玩家
     my_color = None
+    room_players = {}  # 💡 建立對應顏色與對手暱稱的對照字典
+    
     if room_code in rooms:
         players = rooms[room_code]['players']
         colors = ['red', 'blue', 'yellow', 'green']
+        
+        # 遍歷房間內的所有玩家，將每個玩家與分配到的顏色暱稱綁定
         for i, p in enumerate(players):
-            if p['id'] == user_id and i < len(colors):
-                my_color = colors[i]
-                break
+            if i < len(colors):
+                room_players[colors[i]] = p['name']
+                if p['id'] == user_id:
+                    my_color = colors[i]
     
-    emit('init_game', {'my_color': my_color})
+    # 💡 完美同步：將個人分配的顏色，以及全房間的「顏色對應暱稱清單」一同傳遞給前端顯示
+    emit('init_game', {'my_color': my_color, 'room_players': room_players})
 
 @socketio.on('game_action')
 def handle_game_action(data):
     room_code = data.get('room_code')
     # 當某個玩家下棋時，將動作廣播給房間內的「其他人」
     emit('update_board', data, to=room_code, include_self=False)
+
+# 💡 新增：即時連線聊天室訊息轉發
+@socketio.on('send_chat')
+def handle_send_chat(data):
+    room_code = data.get('room_code')
+    # include_self=False 代表過濾發送者，不回傳給自己（因為發送者本端前端已直接貼上對話框）
+    emit('receive_chat', data, to=room_code, include_self=False)
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
