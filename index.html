@@ -27,10 +27,11 @@
             --font-sans: 'Noto Sans TC', 'Microsoft JhengHei', Arial, sans-serif;
         }
 
-        body { font-family: var(--font-sans); display: flex; justify-content: center; align-items: center; background: var(--bg-color); color: var(--text-main); margin: 0; min-height: 100vh; }
+        body { font-family: var(--font-sans); display: flex; justify-content: center; align-items: center; background: var(--bg-color); color: var(--text-main); margin: 0; min-height: 100vh; overflow-x: hidden;}
         
-        h1, h2, h3, .auth-title, .menu-title { font-family: var(--font-serif); color: var(--text-main); font-weight: 700; }
+        h1, h2, h3, .auth-title, .menu-title { font-family: var(--font-serif); color: var(--text-main); font-weight: 700; margin-top: 0;}
 
+        /* 登入註冊介面 */
         .auth-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 450px; padding: 20px; box-sizing: border-box; animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -49,40 +50,94 @@
         .forgot-pwd-link { display: block; text-align: right; color: var(--primary); font-size: 13px; text-decoration: none; margin-top: -10px; margin-bottom: 20px; cursor: pointer; transition: 0.2s; font-weight: 500;}
         .forgot-pwd-link:hover { color: var(--text-main); text-decoration: underline; }
 
-        .page-container { display: none; justify-content: center; align-items: stretch; gap: 50px; width: 100%; max-width: 1100px; padding: 20px; box-sizing: border-box; flex-wrap: wrap; }
-        .left-section { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; min-width: 350px; }
-        .menu-title { font-size: 55px; margin-top: 20px; margin-bottom: 10px; letter-spacing: 6px; }
-        .menu-subtitle { font-size: 16px; color: var(--text-sub); margin-bottom: 40px; letter-spacing: 2px; font-weight: 500;}
+        /* 💡 遊戲主介面 (極致置中) */
+        .page-container { display: none; justify-content: center; align-items: center; width: 100%; height: 100vh; padding: 20px; box-sizing: border-box; }
+        
+        .center-section { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; max-width: 420px; animation: fadeIn 0.5s ease-out; }
+        .menu-title { font-size: 60px; margin-bottom: 10px; letter-spacing: 8px; }
+        .menu-subtitle { font-size: 18px; color: var(--text-sub); margin-bottom: 40px; letter-spacing: 2px; font-weight: 500;}
 
-        .glass-card { background: var(--card-bg); padding: 40px 30px; border-radius: 12px; border: 1px solid var(--card-border); box-shadow: 0 10px 40px rgba(74, 54, 35, 0.08); width: 100%; max-width: 380px; box-sizing: border-box; }
-        .glass-card h3 { margin-top: 0; margin-bottom: 25px; font-size: 22px; text-align: center; letter-spacing: 1px;}
+        .glass-card { background: var(--card-bg); padding: 40px 35px; border-radius: 16px; border: 1px solid var(--card-border); box-shadow: 0 15px 45px rgba(74, 54, 35, 0.08); width: 100%; box-sizing: border-box; }
+        .glass-card h3 { margin-bottom: 25px; font-size: 22px; text-align: center; letter-spacing: 1px;}
 
-        .player-select-group { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+        .player-select-group { display: flex; justify-content: center; gap: 15px; margin-bottom: 35px; }
         .player-option { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--btn-beige); display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; transition: all 0.2s; color: var(--text-sub); background: white; font-family: var(--font-serif); font-weight: bold;}
         .player-option:hover { background: var(--btn-beige); color: var(--text-main); transform: translateY(-2px);}
-        .player-option.active { background: var(--primary); border-color: var(--primary); color: white; box-shadow: 0 5px 15px rgba(140, 115, 90, 0.3); }
+        .player-option.active { background: var(--primary); border-color: var(--primary); color: white; box-shadow: 0 5px 15px rgba(140, 115, 90, 0.3); transform: scale(1.05); }
 
-        .btn-group { display: flex; flex-direction: column; gap: 15px; }
-        .start-btn { width: 100%; padding: 16px; font-size: 17px; font-weight: bold; color: white; background: var(--btn-brown-dark); border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(92, 69, 48, 0.2); font-family: var(--font-sans); letter-spacing: 1px;}
+        .btn-group { display: flex; flex-direction: column; gap: 15px; width: 100%;}
+        button { width: 100%; font-family: var(--font-sans); letter-spacing: 1px; cursor: pointer; border: none; }
+        
+        .start-btn { padding: 18px; font-size: 18px; font-weight: bold; color: white; background: var(--btn-brown-dark); border-radius: 10px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(92, 69, 48, 0.2); }
         .start-btn:hover { background: var(--text-main); transform: translateY(-2px); }
-        .primary-btn { width: 100%; padding: 16px; font-size: 17px; font-weight: bold; color: white; background: var(--primary); border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(140, 115, 90, 0.2); font-family: var(--font-sans); letter-spacing: 1px;}
+        
+        .primary-btn { padding: 16px; font-size: 17px; font-weight: bold; color: white; background: var(--primary); border-radius: 8px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(140, 115, 90, 0.2); }
         .primary-btn:hover { background: var(--text-main); transform: translateY(-2px); }
-        .online-btn { width: 100%; padding: 16px; font-size: 17px; font-weight: bold; color: white; background: var(--btn-brown-light); border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(156, 128, 101, 0.2); font-family: var(--font-sans); letter-spacing: 1px;}
+        
+        .online-btn { padding: 18px; font-size: 18px; font-weight: bold; color: white; background: var(--btn-brown-light); border-radius: 10px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(156, 128, 101, 0.2); }
         .online-btn:hover { background: var(--text-main); transform: translateY(-2px); }
-        .rules-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: bold; color: var(--text-main); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; cursor: pointer; transition: all 0.2s; font-family: var(--font-sans); letter-spacing: 1px;}
-        .rules-btn:hover { background: var(--btn-beige); }
 
-        .right-sidebar { width: 350px; display: flex; flex-direction: column; gap: 20px; }
+        /* 💡 右上角：展開側邊欄的按鈕 */
+        .menu-toggle-btn {
+            position: fixed;
+            top: 30px;
+            right: 40px;
+            background-color: white;
+            color: var(--text-main);
+            border: 1px solid var(--card-border);
+            border-radius: 50px;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 5px 20px rgba(74, 54, 35, 0.08);
+            z-index: 900;
+            display: none; 
+            width: auto;
+            transition: 0.2s;
+        }
+        .menu-toggle-btn:hover { background-color: var(--btn-beige); transform: translateY(-2px); }
+
+        /* 💡 側邊滑出選單 (抽屜式) */
+        .right-sidebar {
+            position: fixed;
+            top: 0;
+            right: -450px; /* 初始隱藏於畫面右外側 */
+            width: 380px;
+            height: 100vh;
+            background: var(--bg-color);
+            box-shadow: -10px 0 40px rgba(74, 54, 35, 0.15);
+            z-index: 1000;
+            transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            padding: 30px 25px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .right-sidebar.open { right: 0; }
+
+        .close-sidebar-btn {
+            align-self: flex-end;
+            background: transparent;
+            font-size: 24px;
+            color: var(--text-sub);
+            padding: 0;
+            margin-bottom: 5px;
+            width: auto;
+        }
+        .close-sidebar-btn:hover { color: var(--danger); transform: scale(1.1); }
+
+        /* 選單內的頁籤與內容 */
         .nav-tabs { display: flex; background: var(--card-bg); border-radius: 12px; padding: 6px; border: 1px solid var(--card-border); box-shadow: 0 5px 20px rgba(74, 54, 35, 0.05); }
-        .nav-btn { flex: 1; padding: 12px 5px; font-size: 14px; font-weight: bold; color: var(--text-sub); background: transparent; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; font-family: var(--font-sans);}
+        .nav-btn { flex: 1; padding: 12px 5px; font-size: 14px; font-weight: bold; color: var(--text-sub); background: transparent; border-radius: 8px; transition: 0.2s;}
         .nav-btn:hover { color: var(--text-main); }
         .nav-btn.active { background: var(--btn-beige); color: var(--text-main); }
 
-        .tab-content-panel { background: var(--card-bg); border-radius: 12px; padding: 25px; border: 1px solid var(--card-border); box-shadow: 0 10px 40px rgba(74, 54, 35, 0.08); min-height: 350px; display: flex; flex-direction: column; }
-        .tab-pane { display: none; flex-direction: column; height: 100%; }
+        .tab-content-panel { background: var(--card-bg); border-radius: 12px; padding: 25px; border: 1px solid var(--card-border); box-shadow: 0 10px 30px rgba(74, 54, 35, 0.08); flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .tab-pane { display: none; flex-direction: column; height: 100%; overflow-y: auto;}
         .tab-pane.active { display: flex; }
 
-        .history-list { flex: 1; overflow-y: auto; padding-right: 5px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; max-height: 250px; }
+        .history-list { flex: 1; overflow-y: auto; padding-right: 5px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; }
         .history-list::-webkit-scrollbar { width: 6px; }
         .history-list::-webkit-scrollbar-thumb { background: #d0c5b5; border-radius: 3px; }
         .history-item { background: #fdfdfc; border: 1px solid var(--card-border); border-radius: 8px; padding: 15px; text-align: left; }
@@ -91,7 +146,7 @@
         .history-details { font-size: 13px; color: var(--text-sub); }
         .history-empty { text-align: center; color: var(--text-sub); padding: 30px 0; font-size: 14px;}
 
-        .clear-btn { width: 100%; padding: 12px; font-size: 14px; font-weight: bold; color: var(--danger); background: transparent; border: 1px solid var(--danger); border-radius: 8px; cursor: pointer; transition: 0.2s; font-family: var(--font-sans);}
+        .clear-btn { padding: 12px; font-size: 14px; font-weight: bold; color: var(--danger); background: transparent; border: 1px solid var(--danger); border-radius: 8px; transition: 0.2s;}
         .clear-btn:hover { background: var(--danger); color: white; }
 
         .account-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 20px; }
@@ -101,7 +156,7 @@
         .account-status { font-size: 14px; font-weight: bold; color: var(--primary); }
 
         .account-menu { display: flex; flex-direction: column; gap: 10px; }
-        .menu-action-btn { background: #fdfdfc; border: 1px solid var(--card-border); color: var(--text-main); padding: 14px 16px; border-radius: 8px; display: flex; align-items: center; font-size: 15px; cursor: pointer; transition: all 0.2s; text-align: left; width: 100%; font-family: var(--font-sans); font-weight: 500;}
+        .menu-action-btn { background: #fdfdfc; border: 1px solid var(--card-border); color: var(--text-main); padding: 14px 16px; border-radius: 8px; display: flex; align-items: center; font-size: 15px; transition: all 0.2s; text-align: left; font-weight: 500;}
         .menu-action-btn:hover { background: var(--btn-beige); transform: translateX(5px); border-color: var(--primary); }
         .menu-icon { margin-right: 12px; font-size: 18px; }
 
@@ -109,16 +164,21 @@
         .info-label { color: var(--text-sub); }
         .info-value { font-weight: bold; color: var(--text-main); }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(74, 54, 35, 0.7); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(5px); }
+        /* 將規則按鈕移入選單最下方 */
+        .rules-btn { padding: 16px; font-size: 16px; font-weight: bold; color: white; background: var(--primary); border-radius: 10px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(140, 115, 90, 0.2); flex-shrink: 0; margin-top: auto;}
+        .rules-btn:hover { background: var(--text-main); transform: translateY(-2px); }
+
+        /* 彈窗樣式 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(74, 54, 35, 0.7); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(5px); }
         .modal-content { background: var(--card-bg); color: var(--text-main); padding: 35px 45px; border-radius: 12px; width: 85%; max-width: 500px; text-align: left; box-shadow: 0 20px 50px rgba(74, 54, 35, 0.3); border: 1px solid var(--card-border); transform: translateY(-20px); animation: slideDown 0.3s forwards; }
         @keyframes slideDown { to { transform: translateY(0); } }
-        .modal-content h2 { margin-top: 0; text-align: center; color: var(--text-main); border-bottom: 1px solid var(--card-border); padding-bottom: 15px; margin-bottom: 25px; font-family: var(--font-serif); font-size: 26px;}
+        .modal-content h2 { text-align: center; border-bottom: 1px solid var(--card-border); padding-bottom: 15px; margin-bottom: 25px; font-size: 26px;}
         
-        .btn-cancel-modal { width: 100%; padding: 16px; font-size: 17px; font-weight: bold; color: var(--text-main); background: var(--btn-beige); border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; font-family: var(--font-sans); letter-spacing: 1px;}
+        .btn-cancel-modal { padding: 16px; font-size: 17px; font-weight: bold; color: var(--text-main); background: var(--btn-beige); border-radius: 8px; transition: 0.2s; }
         .btn-cancel-modal:hover { background: #dcd3c6; }
 
         .input-group { margin-bottom: 20px; text-align: left;}
-        .input-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-main); font-weight: 500;}
+        .input-group label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500;}
         .input-group input { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid var(--card-border); background: #fdfdfc; color: var(--text-main); font-size: 16px; box-sizing: border-box; outline: none; transition: 0.2s; font-family: var(--font-sans);}
         .input-group input:focus { border-color: var(--primary); background: #ffffff; box-shadow: 0 0 0 3px rgba(140, 115, 90, 0.1); }
 
@@ -126,40 +186,46 @@
         .friend-list-container::-webkit-scrollbar { width: 6px; }
         .friend-list-container::-webkit-scrollbar-thumb { background: #d0c5b5; border-radius: 3px; }
         .friend-item { display: flex; align-items: center; padding: 12px; background: #fdfdfc; border-radius: 8px; border: 1px solid var(--card-border);}
-        .friend-avatar { width: 45px; height: 45px; background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 15px; color: var(--text-main); font-family: var(--font-serif); font-weight: bold;}
+        .friend-avatar { width: 45px; height: 45px; background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 15px; font-family: var(--font-serif); font-weight: bold;}
         .friend-info { flex: 1; }
-        .friend-name { font-weight: bold; font-size: 16px; margin-bottom: 3px; color: var(--text-main);}
+        .friend-name { font-weight: bold; font-size: 16px; margin-bottom: 3px; }
         .friend-id { font-size: 12px; color: var(--text-sub); font-family: monospace;}
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; background-color: var(--primary); }
         
         .add-friend-bar { display: flex; gap: 10px; margin-bottom: 25px; }
-        .add-friend-bar input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--card-border); background: #fdfdfc; color: var(--text-main); outline: none; font-family: var(--font-sans);}
-        .add-friend-bar button { padding: 10px 18px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: var(--font-sans); transition: 0.2s;}
+        .add-friend-bar input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--card-border); background: #fdfdfc; outline: none; }
+        .add-friend-bar button { width: auto; padding: 10px 18px; background: var(--primary); color: white; border-radius: 8px; font-weight: bold; transition: 0.2s;}
         .add-friend-bar button:hover { background: var(--text-main); }
         
         /* 房間 UI 專屬樣式 */
-        .btn-create-room { width: 100%; padding: 18px; font-size: 18px; font-weight: bold; color: white; background: var(--btn-brown-light); border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(156, 128, 101, 0.2); font-family: var(--font-sans); letter-spacing: 2px; }
+        .btn-create-room { padding: 18px; font-size: 18px; font-weight: bold; color: white; background: var(--btn-brown-light); border-radius: 8px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(156, 128, 101, 0.2); letter-spacing: 2px; }
         .btn-create-room:hover { background: var(--text-main); transform: translateY(-2px); }
 
         .room-input-group { display: flex; gap: 10px; margin-bottom: 30px; }
-        .room-input-group input { flex: 1; padding: 15px; border-radius: 8px; border: 1px solid var(--card-border); background: #fdfdfc; color: var(--text-main); font-size: 22px; letter-spacing: 5px; text-align: center; outline: none; font-family: var(--font-sans); transition: 0.2s;}
+        .room-input-group input { flex: 1; padding: 15px; border-radius: 8px; border: 1px solid var(--card-border); background: #fdfdfc; font-size: 22px; letter-spacing: 5px; text-align: center; outline: none; transition: 0.2s;}
         .room-input-group input:focus { border-color: var(--btn-brown-dark); background: white; box-shadow: 0 0 0 3px rgba(92, 69, 48, 0.1); }
-        .room-input-group button { padding: 10px 30px; background: var(--btn-brown-dark); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; transition: 0.2s; font-family: var(--font-sans); letter-spacing: 1px;}
+        .room-input-group button { width: auto; padding: 10px 30px; background: var(--btn-brown-dark); color: white; border-radius: 8px; font-weight: bold; font-size: 18px; transition: 0.2s; letter-spacing: 1px;}
         .room-input-group button:hover { background: var(--text-main); }
 
-        .room-code-display { font-size: 60px; font-weight: bold; text-align: center; color: var(--text-main); letter-spacing: 15px; background: #fdfdfc; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid var(--card-border); font-family: var(--font-serif); margin-left: 15px;}
+        .room-code-display { font-size: 60px; font-weight: bold; text-align: center; letter-spacing: 15px; background: #fdfdfc; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid var(--card-border); font-family: var(--font-serif); margin-left: 15px;}
         
         .room-success-msg { color: #5f7556; font-family: var(--font-serif); font-size: 18px; font-weight: 700; margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .room-success-msg .check-icon { background-color: #79966d; color: white; border-radius: 4px; padding: 2px 6px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center;}
 
-        .player-list-header { text-align: left; margin: 25px 0 10px 0; color: var(--text-main); font-family: var(--font-serif); font-size: 18px; }
+        .player-list-header { text-align: left; margin: 25px 0 10px 0; font-family: var(--font-serif); font-size: 18px; }
 
         .room-player-item { display: flex; align-items: center; padding: 15px 20px; background: #fdfdfc; border-radius: 8px; border: 1px solid var(--card-border); margin-bottom: 12px; }
-        .room-player-avatar { width: 55px; height: 55px; background: transparent; border: 1px solid #d0c5b5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-right: 20px; color: var(--text-main); font-family: var(--font-serif); }
+        .room-player-avatar { width: 55px; height: 55px; border: 1px solid #d0c5b5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-right: 20px; font-family: var(--font-serif); }
         .room-player-info { display: flex; flex-direction: column; text-align: left; }
-        .room-player-name { font-weight: bold; font-size: 18px; color: var(--text-main); margin-bottom: 4px; font-family: var(--font-sans);}
-        .room-player-id { font-size: 13px; color: var(--text-sub); font-family: var(--font-sans); }
+        .room-player-name { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
+        .room-player-id { font-size: 13px; color: var(--text-sub); }
 
+        /* 手機版適應 */
+        @media (max-width: 600px) {
+            .menu-toggle-btn { top: 15px; right: 15px; padding: 10px 18px; font-size: 14px; }
+            .right-sidebar { width: 100vw; right: -100vw; }
+            .menu-title { font-size: 45px; }
+        }
     </style>
 </head>
 <body>
@@ -201,6 +267,7 @@
         </div>
     </div>
 
+    <!-- 重設密碼 -->
     <div id="forgot-pwd-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <h2>重設密碼</h2>
@@ -218,8 +285,12 @@
         </div>
     </div>
 
+    <!-- 💡 右上角：開啟選單按鈕 -->
+    <button id="main-menu-btn" class="menu-toggle-btn" onclick="toggleSidebar()">☰ 選單</button>
+
+    <!-- 💡 遊戲主介面：極致置中 -->
     <div class="page-container" id="main-container">
-        <div class="left-section">
+        <div class="center-section">
             <h1 class="menu-title">WALL GO</h1>
             <p class="menu-subtitle">原木質感對決享受</p>
             
@@ -232,71 +303,70 @@
                     <div class="player-option" data-val="4" onclick="setPlayers(4)">4</div>
                 </div>
                 
-                <div class="btn-group" style="margin-bottom: 20px;">
-                    <button class="start-btn" onclick="startGame()">開始單機遊戲</button>
-                </div>
-
-                <div style="margin: 20px 0; border-bottom: 1px solid var(--card-border);"></div>
-
                 <div class="btn-group">
+                    <button class="start-btn" onclick="startGame()">開始單機遊戲</button>
+                    <div style="margin: 15px 0; border-bottom: 1px solid var(--card-border);"></div>
                     <button class="online-btn" onclick="openRoomModal()">建立 / 加入線上房間</button>
-                    <button class="rules-btn" onclick="openModal('rules-modal')">查看遊戲規則</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="right-sidebar">
-            <div class="nav-tabs">
-                <button class="nav-btn active" onclick="switchTab('history')">歷史戰績</button>
-                <button class="nav-btn" onclick="switchTab('account')">我的帳號</button>
-                <button class="nav-btn" onclick="switchTab('info')">相關資訊</button>
-            </div>
-
-            <div class="tab-content-panel">
-                <div id="tab-history" class="tab-pane active">
-                    <div style="text-align: right; margin-bottom: 15px; font-size: 13px; color: var(--text-sub);">
-                        總遊玩：<span id="total-games" style="color: var(--text-main); font-weight: bold;">0 場</span>
-                    </div>
-                    <div id="history-list" class="history-list"></div>
-                    <button class="clear-btn" onclick="clearHistory()">清除所有紀錄</button>
-                </div>
-
-                <div id="tab-account" class="tab-pane">
-                    <div class="account-header">
-                        <div class="avatar-circle" id="display-avatar">👤</div>
-                        <h2 class="account-name" id="display-name">載入中...</h2>
-                        <div class="account-id" id="display-id">ID: 載入中...</div>
-                        <span class="account-status">線上 (Online)</span>
-                    </div>
-                    <div class="account-menu">
-                        <button class="menu-action-btn" onclick="openProfileEditor()">
-                            <span class="menu-icon">✏️</span>編輯個人資料
-                        </button>
-                        <button class="menu-action-btn" onclick="openFriendList()">
-                            <span class="menu-icon">👥</span>好友名單
-                        </button>
-                        <button class="menu-action-btn" onclick="switchTab('history')">
-                            <span class="menu-icon">📊</span>查看戰績
-                        </button>
-                        <button class="menu-action-btn" onclick="logout()" style="color: var(--danger);">
-                            <span class="menu-icon">🚪</span>登出帳號
-                        </button>
-                    </div>
-                </div>
-
-                <div id="tab-info" class="tab-pane">
-                    <h3 style="text-align: center; margin-top: 0; font-family: var(--font-serif); font-size: 20px;">系統資訊</h3>
-                    <div style="margin-bottom: 25px; border-bottom: 1px solid var(--card-border);"></div>
-                    <div class="info-row"><span class="info-label">遊戲名稱</span><span class="info-value">Wall Go 木質版</span></div>
-                    <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v9.0 全面統一版</span></div>
-                    <p style="font-size: 13px; color: var(--primary); text-align: center; margin-top: 30px; font-weight: 500;">
-                        已成功連接至雲端資料庫
-                    </p>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 💡 側邊滑出選單 (抽屜) -->
+    <div class="right-sidebar" id="right-sidebar">
+        <button class="close-sidebar-btn" onclick="toggleSidebar()">✖</button>
+        
+        <div class="nav-tabs">
+            <button class="nav-btn active" onclick="switchTab('history')">歷史戰績</button>
+            <button class="nav-btn" onclick="switchTab('account')">我的帳號</button>
+            <button class="nav-btn" onclick="switchTab('info')">相關資訊</button>
+        </div>
+
+        <div class="tab-content-panel">
+            <div id="tab-history" class="tab-pane active">
+                <div style="text-align: right; margin-bottom: 15px; font-size: 13px; color: var(--text-sub);">
+                    總遊玩：<span id="total-games" style="color: var(--text-main); font-weight: bold;">0 場</span>
+                </div>
+                <div id="history-list" class="history-list"></div>
+                <button class="clear-btn" onclick="clearHistory()">清除所有紀錄</button>
+            </div>
+
+            <div id="tab-account" class="tab-pane">
+                <div class="account-header">
+                    <div class="avatar-circle" id="display-avatar">👤</div>
+                    <h2 class="account-name" id="display-name">載入中...</h2>
+                    <div class="account-id" id="display-id">ID: 載入中...</div>
+                    <span class="account-status">線上 (Online)</span>
+                </div>
+                <div class="account-menu">
+                    <button class="menu-action-btn" onclick="openProfileEditor()">
+                        <span class="menu-icon">✏️</span>編輯個人資料
+                    </button>
+                    <button class="menu-action-btn" onclick="openFriendList()">
+                        <span class="menu-icon">👥</span>好友名單
+                    </button>
+                    <button class="menu-action-btn" onclick="logout()" style="color: var(--danger); margin-top: 10px;">
+                        <span class="menu-icon">🚪</span>登出帳號
+                    </button>
+                </div>
+            </div>
+
+            <div id="tab-info" class="tab-pane">
+                <h3 style="text-align: center; margin-top: 0; font-family: var(--font-serif); font-size: 20px;">系統資訊</h3>
+                <div style="margin-bottom: 25px; border-bottom: 1px solid var(--card-border);"></div>
+                <div class="info-row"><span class="info-label">遊戲名稱</span><span class="info-value">Wall Go 木質版</span></div>
+                <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v10.0 極致美學版</span></div>
+                <p style="font-size: 13px; color: var(--primary); text-align: center; margin-top: 30px; font-weight: 500;">
+                    已成功連接至雲端資料庫
+                </p>
+            </div>
+        </div>
+
+        <!-- 💡 規則按鈕收納在選單最底下 -->
+        <button class="rules-btn" onclick="openModal('rules-modal')">📄 查看遊戲規則</button>
+    </div>
+
+    <!-- 線上房間介面 -->
     <div id="room-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px; text-align: center;">
             <div id="room-ui-main">
@@ -328,12 +398,13 @@
         </div>
     </div>
 
+    <!-- 好友介面 -->
     <div id="friends-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 480px;">
             <h2>我的好友</h2>
             <div class="add-friend-bar">
-                <input type="text" id="add-friend-input" placeholder="輸入好友專屬 ID (例: #1234)">
-                <button onclick="sendFriendRequest()" style="background: var(--btn-brown-light);">發送邀請</button>
+                <input type="text" id="add-friend-input" placeholder="輸入 ID (例: #1234)">
+                <button onclick="sendFriendRequest()" style="background: var(--btn-brown-light);">發送</button>
             </div>
             <div class="friend-list-container" id="friend-list-render">
                 <p style="text-align:center; color:var(--text-sub); margin-top:20px;">載入中...</p>
@@ -342,6 +413,7 @@
         </div>
     </div>
 
+    <!-- 個人資料介面 -->
     <div id="profile-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px;">
             <h2>編輯個人資料</h2>
@@ -358,6 +430,7 @@
         </div>
     </div>
 
+    <!-- 規則介面 -->
     <div id="rules-modal" class="modal-overlay">
         <div class="modal-content">
             <h2>遊戲規則</h2>
@@ -366,13 +439,14 @@
                 • <b>行動期</b>：每回可移動 1~2 步（含 L型轉彎，不可越子）。<br>
                 • <b>建牆</b>：移動後必須在該棋子四周蓋牆。<br>
                 • <b>破牆</b>：每人一次，可打破任何一道牆。<br>
-                • <b>限時</b>：每回合 90 秒，超時將剝奪移動權並隨機建牆。<br>
+                • <b>限時</b>：每回合 90 秒，超時將剝奪移動權並自動執行。<br>
                 • <b>獲勝</b>：佔領最多「純淨獨占領地」者勝。
             </div>
             <button class="btn-cancel-modal" onclick="closeModal('rules-modal')">我準備好了</button>
         </div>
     </div>
 
+    <!-- ================= JavaScript 核心邏輯 ================= -->
     <script>
         let currentUser = null;
         let selectedPlayers = 3;
@@ -380,6 +454,12 @@
         const API_URL = 'https://wallgo-play.onrender.com';
         const socket = io(API_URL);
         let currentRoomCode = null;
+
+        // 控制側邊欄開關
+        function toggleSidebar() {
+            const sidebar = document.getElementById('right-sidebar');
+            sidebar.classList.toggle('open');
+        }
 
         function openRoomModal() {
             openModal('room-modal');
@@ -691,10 +771,12 @@
                 currentUser = JSON.parse(savedSession);
                 document.getElementById('auth-page').style.display = 'none';
                 document.getElementById('main-container').style.display = 'flex';
+                document.getElementById('main-menu-btn').style.display = 'block'; // 顯示選單按鈕
                 updateProfileUI();
             } else {
                 document.getElementById('auth-page').style.display = 'flex';
                 document.getElementById('main-container').style.display = 'none';
+                document.getElementById('main-menu-btn').style.display = 'none'; // 隱藏選單按鈕
             }
         }
 
