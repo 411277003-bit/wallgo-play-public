@@ -24,7 +24,7 @@
             --font-sans: 'Noto Sans TC', 'Microsoft JhengHei', Arial, sans-serif;
         }
 
-        /* 💡 左右分欄排版：使用 space-between 配合左右等寬元素，達成絕對置中 */
+        /* 左右分欄排版：使用 space-between 配合左右等寬元素，達成絕對置中 */
         body { 
             font-family: var(--font-sans); 
             display: flex; 
@@ -42,7 +42,7 @@
             gap: 20px;
         }
 
-        /* 💡 左側：狀態與控制按鈕區 (寬度大幅縮小至 240px) */
+        /* 左側：狀態與控制按鈕區 */
         .left-sidebar {
             display: flex;
             flex-direction: column;
@@ -53,7 +53,6 @@
             justify-content: center;
         }
         
-        /* 狀態面板縮小 padding 與字體 */
         .status-panel { 
             text-align: center; 
             padding: 18px 15px; 
@@ -76,7 +75,6 @@
         
         .breaker-status { font-size: 12px; color: var(--text-sub); margin-top: 12px; font-weight: 500; line-height: 1.5;}
 
-        /* 控制按鈕縮小 */
         .controls { display: flex; flex-direction: column; gap: 8px; width: 100%;}
         button { width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; font-family: var(--font-sans); letter-spacing: 1px;}
         #btn-breaker { background-color: #d0c5b5; color: #8c735a; }
@@ -87,7 +85,7 @@
         .btn-back { background-color: transparent; border: 1px solid #8c735a; color: #5c4530; }
         .btn-back:hover { background-color: #ebe4d8; color: var(--text-main); }
 
-        /* 💡 中間：棋盤區域，自動吃掉所有剩餘空間並置中 */
+        /* 中間：棋盤區域 */
         .board-container {
             flex: 1;
             display: flex;
@@ -97,7 +95,6 @@
         }
 
         .board { 
-            /* 棋盤現在可以更大！佔據 92% 的螢幕高度 */
             --board-size: min(100%, 92vh); 
             width: var(--board-size);
             height: var(--board-size);
@@ -140,7 +137,7 @@
         .highlight-wall { background-color: rgba(92, 69, 48, 0.5) !important; cursor: pointer; border-radius: 4px; box-shadow: inset 0 0 5px rgba(0,0,0,0.15); }
         .selected { transform: scale(1.15); box-shadow: 0 0 0 3px rgba(74, 54, 35, 0.8), 0 5px 15px rgba(0,0,0,0.3); }
 
-        /* 💡 右側：隱形佔位區，確保排版完美對稱置中 */
+        /* 右側：隱形佔位區 */
         .right-spacer {
             width: 240px;
             flex-shrink: 0;
@@ -306,7 +303,7 @@
             font-weight: bold;
         }
 
-        /* 💡 響應式：手機或窄螢幕時，隱藏隱形佔位區，自動變回上下排列 */
+        /* 響應式：手機或窄螢幕時，隱藏隱形佔位區，自動變回上下排列 */
         @media (max-width: 900px) {
             body { flex-direction: column; padding: 15px; gap: 20px; overflow-y: auto; height: auto; justify-content: flex-start;}
             .left-sidebar { width: 100%; max-width: 500px; height: auto; }
@@ -340,7 +337,7 @@
 
         <div class="controls">
             <button id="btn-breaker" onclick="toggleWallBreaker()">使用破牆者</button>
-            <button id="btn-reset" onclick="重新開始">重新開始</button>
+            <button id="btn-reset" onclick="resetGame()">重新開始</button>
             <button class="btn-back" onclick="backToMenu()">回主選單</button>
         </div>
     </div>
@@ -350,7 +347,7 @@
         <div id="game-board" class="board"></div>
     </div>
 
-    <!-- 右側：隱形佔位區 (用來把棋盤推向螢幕絕對正中央) -->
+    <!-- 右側：隱形佔位區 -->
     <div class="right-spacer"></div>
 
     <!-- 浮動按鈕：開啟聊天室 -->
@@ -1094,13 +1091,15 @@
                 
                 let sortedColors = [...activeColors].sort((a, b) => scores[b] - scores[a]);
                 
-                let scoreText = sortedColors.map((c, idx) => {
+                let alertScoreText = sortedColors.map((c, idx) => {
                     let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
                     let baseName = getDisplayName(c);
                     let suffix = isMe ? ' (你)' : (isVsAI && c === aiColor ? ' (AI)' : '');
                     
                     return `第 ${idx + 1} 名： ${colorMap[c].icon} ${baseName}${suffix} 領土：${scores[c]} 格`;
-                }).join('\n<br>');
+                }).join('\n');
+                
+                let chatScoreText = alertScoreText.replace(/\n/g, '<br>');
                 
                 let maxScore = scores[sortedColors[0]]; 
                 
@@ -1133,7 +1132,12 @@
                       .catch(err => console.error("戰績上傳失敗", err));
                 }
                 
-                appendChatMessage('系統', 'yellow', `🏆 遊戲結束！<br>${reason}<br><br>${scoreText}`);
+                appendChatMessage('系統', 'yellow', `🏆 遊戲結束！<br>${reason}<br><br>${chatScoreText}`);
+                
+                // 💡 補回遊戲結束的彈跳視窗
+                setTimeout(() => { 
+                    alert(`🏆 遊戲結束！${reason}\n\n${alertScoreText}`); 
+                }, 150);
             }
         }
 
