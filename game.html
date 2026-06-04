@@ -429,7 +429,7 @@
         let aiBrain = new WallGoAI();
 
         // 🌟 【重大修正】從加載 JSON 權重，全面改為加載 TensorFlow.js 的 ResNet 殘差類神經網路大腦
-        tf.loadLayersModel('./alpha_model/model.json?' + new Date().getTime())
+        tf.loadLayersModel('./model.json?' + new Date().getTime())
             .then(model => {
                 aiBrain.model = model;
                 console.log("🧠 成功載入 AlphaZero ResNet 雙頭類神經網絡模型！");
