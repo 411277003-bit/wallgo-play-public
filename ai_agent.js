@@ -1,118 +1,145 @@
 // ai_agent.js
+import * as tf from '@tensorflow/tfjs';
+
 export class WallGoAI {
-    constructor(w_territory, w_mobility, w_center) {
-        this.w_territory = w_territory;
-        this.w_mobility = w_mobility;
-        this.w_center = w_center; // 佔領中心的權重
+    constructor(model = null) {
+        this.model = model;
+        this.numActions = 392; // 2隻棋子 * 49個格子 * 4個牆壁方向 = 392 總行動空間
     }
 
-    // 產生稍微變異的挑戰者
-    mutate() {
-        const rate = 0.1;
-        return new WallGoAI(
-            this.w_territory + (Math.random() * rate * 2 - rate),
-            this.w_mobility + (Math.random() * rate * 2 - rate),
-            this.w_center + (Math.random() * rate * 2 - rate)
-        );
-    }
+    encodeState(game, aiColor) {
+        return tf.tidy(() => {
+            const buffer = tf.buffer([7, 7, 5]);
+            game.pieces.forEach((p) => {
+                const gridR = Math.floor(p.r / 2);
+                const gridC = Math.floor(p.c / 2);
+                if (gridR >= 0 && gridR < 7 && gridC >= 0 && gridC < 7) {
+                    if (p.color === aiColor) {
+                        buffer.set(1, gridR, gridC, 0);
+                    } else {
+                        buffer.set(1, gridR, gridC, 1);
+                    }
+                }
+            });
 
-    // 核心評分公式 (最新終極非線性降噪與全淨值歸一化版)
-    evaluateBoard(game, aiColor) {
-        let score = 0;
-        
-        let aiMobilityRaw = 0;
-        let oppMobilityRaw = 0;
-        let aiTerritory = 0;
-        let oppTerritory = 0;
-        let aiCenter = 0;
-        let oppCenter = 0;
-
-        // 追蹤個別棋子是否被完全卡死（2v2 雙棋子聯防機制）
-        let aiTrappedPieces = 0;
-        let oppTrappedPieces = 0;
-
-        game.pieces.forEach(p => {
-            // 1. 機動性計算與歸一化 (單一棋子最大包含自身格為 5 步，轉為 0 ~ 1)
-            let movesCount = game.getValidMoves(p.r, p.c).length;
-            let normMobility = movesCount / 5; 
-            
-            // 2. 🌟【中心控制拋物線降噪】(最大曼哈頓距離 12，轉為 0 ~ 1，越近越趨近 1)
-            // 將線性改成二次方衰減：1 - (distance/12)^2
-            // 消除 AI 在中心點附近微觀「刷分行為」的強迫症，強制壓制 w_center 暴增
-            let centerDistance = Math.abs(p.r - 6) + Math.abs(p.c - 6); 
-            let normCenter = 1 - Math.pow(centerDistance / 12, 2); 
-            
-            // 3. 🌟【領土開闊度真正啟用】(四周最大 4 個建牆位，轉為 0 ~ 1，周圍越開闊分數越高)
-            // 讓 w_territory 真正進入賽局，使 AI 具備宏觀擴張領土、包圍對手的思維
-            let validWalls = game.getValidWalls(p.r, p.c).length;
-            let normTerritory = validWalls / 4; 
-
-            // 分流累加我方與敵方棋子的特徵值
-            if (p.color === aiColor) {
-                aiMobilityRaw += normMobility;
-                aiCenter += normCenter;
-                aiTerritory += normTerritory;
-                if (movesCount <= 1) aiTrappedPieces++; // 扣除原地踏步，若只剩 1 步或沒步算卡死
-            } else {
-                oppMobilityRaw += normMobility;
-                oppCenter += normCenter;
-                oppTerritory += normTerritory;
-                if (movesCount <= 1) oppTrappedPieces++;
+            for (let r = 0; r < 7; r++) {
+                for (let c = 0; c < 7; c++) {
+                    const realR = r * 2;
+                    const realC = c * 2;
+                    if (game.walls.has(`${realR - 1},${realC}`)) buffer.set(1, r, c, 2);
+                    if (game.walls.has(`${realR},${realC - 1}`)) buffer.set(1, r, c, 3);
+                }
             }
+
+            for (let r = 0; r < 7; r++) {
+                for (let c = 0; c < 7; c++) {
+                    buffer.set(1, r, c, 4);
+                }
+            }
+            return buffer.toTensor().expandDims(0);
         });
-
-        // 4. 🌟【機動性開根號處理】(實作邊際效益遞減)
-        // 消除 AI 斤斤計較微觀步數的極端執著，大幅釋放演化壓力，壓制 w_mobility 暴增
-        let aiMobilityScore = Math.sqrt(aiMobilityRaw);
-        let oppMobilityScore = Math.sqrt(oppMobilityRaw);
-
-        // 5. 全面實作「我方淨值 - 敵方淨值」的對抗公式，確保各特徵量綱絕對平衡 (-1.0 ~ +1.0)
-        let diffTerritory = aiTerritory - oppTerritory;
-        let diffMobility = aiMobilityScore - oppMobilityScore;
-        let diffCenter = aiCenter - oppCenter;
-
-        // 🏆 核心權重算式組合
-        score += (diffTerritory * this.w_territory);
-        score += (diffMobility * this.w_mobility);
-        score += (diffCenter * this.w_center);
-        
-        // 絕對邊界懲罰（2v2 無情聯防機制）
-        if (aiTrappedPieces > 0) score -= (10000 * aiTrappedPieces); // 任何一隻被圍死就給予重罰
-        if (oppTrappedPieces > 0) score += (8000 * oppTrappedPieces); // 成功合圍敵方任意棋子給予巨大獎勵
-
-        return score;
     }
 
-    // 找出最佳走法
-    getBestMove(game, aiColor) {
-        let bestAction = null;
-        let bestScore = -Infinity;
+    encodeAction(pIdx, mr, mc, wr, wc) {
+        const targetSquare = Math.floor(mr / 2) * 7 + Math.floor(mc / 2);
+        let wallDir = 0;
+        if (wr === mr - 1) wallDir = 0;
+        if (wr === mr + 1) wallDir = 1;
+        if (wc === mc - 1) wallDir = 2;
+        if (wc === mc + 1) wallDir = 3;
+        return (pIdx * 49 * 4) + (targetSquare * 4) + wallDir;
+    }
+
+    getActionMask(game, aiColor) {
+        const mask = new Array(this.numActions).fill(0);
+        const myPieces = game.pieces.map((p, pArrIdx) => ({ ...p, pArrIdx })).filter(p => p.color === aiColor);
+
+        myPieces.forEach((p, relativeIdx) => { 
+            const moves = game.getValidMoves(p.r, p.c);
+            moves.forEach(m => {
+                const vWalls = game.getValidWalls(m.r, m.c);
+                vWalls.forEach(w => {
+                    const actIdx = this.encodeAction(relativeIdx, m.r, m.c, w.r, w.c);
+                    if (actIdx >= 0 && actIdx < this.numActions) {
+                        mask[actIdx] = 1; 
+                    }
+                });
+            });
+        });
+        return mask;
+    }
+
+    // 🌟 核心改動：加入 epsilon 參數，預設為 0.0 (網頁對決使出全力)
+    async getBestMove(game, aiColor, simulations = 40, epsilon = 0.0) {
+        if (!this.model) {
+            return this.getRandomMove(game, aiColor);
+        }
+
+        // 🌟 隨機探索：一定機率完全隨機走子，強制打破死結、擴展新棋譜
+        if (Math.random() < epsilon) {
+            return this.getRandomMove(game, aiColor);
+        }
+
+        const mask = this.getActionMask(game, aiColor);
         
-        let myPieces = game.pieces.map((p, idx) => ({...p, idx})).filter(p => p.color === aiColor);
+        return tf.tidy(() => {
+            const inputTensor = this.encodeState(game, aiColor);
+            const [policyOutput, valueOutput] = this.model.predict(inputTensor);
+            const policyValues = policyOutput.dataSync();
+            
+            let maxScore = -Infinity;
+            let bestIdx = -1;
+            
+            for (let i = 0; i < this.numActions; i++) {
+                if (mask[i] === 1) {
+                    const score = policyValues[i] + (Math.random() * 0.01); 
+                    if (score > maxScore) {
+                        maxScore = score;
+                        bestIdx = i;
+                    }
+                }
+            }
+
+            if (bestIdx === -1) return this.getRandomMove(game, aiColor);
+            return this.decodeAction(bestIdx, game, aiColor);
+        });
+    }
+
+    decodeAction(idx, game, aiColor) {
+        const myPieces = game.pieces.map((p, pArrIdx) => ({ ...p, pArrIdx })).filter(p => p.color === aiColor);
+        const pIdx = Math.floor(idx / 196); 
+        const remainder = idx % 196;
+        const targetSquare = Math.floor(remainder / 4);
+        const wallDir = remainder % 4;
+
+        const mr = Math.floor(targetSquare / 7) * 2;
+        const mc = (targetSquare % 7) * 2;
+
+        let wr = mr, wc = mc;
+        if (wallDir === 0) wr = mr - 1;
+        if (wallDir === 1) wr = mr + 1;
+        if (wallDir === 2) wc = mc - 1;
+        if (wallDir === 3) wc = mc + 1;
+
+        const targetPiece = myPieces[pIdx] || myPieces[0];
+        return { pIdx: targetPiece.pArrIdx, mr, mc, wr, wc };
+    }
+
+    getRandomMove(game, aiColor) {
+        const myPieces = game.pieces.map((p, idx) => ({ ...p, idx })).filter(p => p.color === aiColor);
+        const validActions = [];
 
         myPieces.forEach(p => {
-            let moves = game.getValidMoves(p.r, p.c);
+            const moves = game.getValidMoves(p.r, p.c);
             moves.forEach(m => {
-                let oldR = p.r; let oldC = p.c;
-                game.pieces[p.idx].r = m.r; game.pieces[p.idx].c = m.c; 
-                let vWalls = game.getValidWalls(m.r, m.c); 
-                
+                const vWalls = game.getValidWalls(m.r, m.c);
                 vWalls.forEach(w => {
-                    game.walls.set(`${w.r},${w.c}`, aiColor);
-                    
-                    let score = this.evaluateBoard(game, aiColor);
-                    score += Math.random() * 0.01; 
-
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestAction = { pIdx: p.idx, mr: m.r, mc: m.c, wr: w.r, wc: w.c };
-                    }
-                    game.walls.delete(`${w.r},${w.c}`);
+                    validActions.push({ pIdx: p.idx, mr: m.r, mc: m.c, wr: w.r, wc: w.c });
                 });
-                game.pieces[p.idx].r = oldR; game.pieces[p.idx].c = oldC; 
             });
         });
 
-        return bestAction;
+        if (validActions.length === 0) return null;
+        return validActions[Math.floor(Math.random() * validActions.length)];
     }
 }
