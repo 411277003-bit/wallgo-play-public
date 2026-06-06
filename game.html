@@ -721,12 +721,11 @@
 
                 let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
 
-                if (playerTimes[currentColor] > 0) {
-                    playerTimes[currentColor]--;
-                    updateUI();
-                }
+                playerTimes[currentColor]--;
+                updateUI();
 
-                if (playerTimes[currentColor] <= 0) {
+                // 💡 倒數到 0 時，自己接管自己的 AI
+                if (playerTimes[currentColor] === 0) {
                     let baseName = getDisplayName(currentColor);
                     let suffix = (mode === 'online' && currentColor === myOnlineColor) || (!mode && currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
 
@@ -737,8 +736,20 @@
                             broadcastGameState();
                         }
                     } else {
-                        appendChatMessage('系統', 'yellow', `⏳ ${baseName}${suffix} 時間耗盡！AI 已介入代為下棋與建牆。`);
+                        appendChatMessage('系統', 'yellow', `⏳ ${baseName}${suffix} 時間耗盡！系統已代為執行。`);
                         executeAILogic(currentColor);
+                    }
+                } 
+                // 💡 斷線救援機制：如果倒數到了 -3，代表該玩家可能跳轉頁面或斷線了
+                // 由「下一順位」的玩家來幫他接管 AI 並廣播，強制推動遊戲
+                else if (playerTimes[currentColor] === -3 && mode === 'online') {
+                    let nextPlayerIndex = (turnIndex + 1) % (phase === 'placement' ? placementQueue.length : movementOrder.length);
+                    let nextPlayer = phase === 'placement' ? placementQueue[nextPlayerIndex] : movementOrder[nextPlayerIndex];
+                    
+                    if (myOnlineColor === nextPlayer) {
+                        appendChatMessage('系統', 'red', `⚠️ 偵測到 ${getDisplayName(currentColor)} 斷線或無回應，由系統強制接管！`);
+                        executeAILogic(currentColor);
+                        broadcastGameState();
                     }
                 }
             }, 1000);
@@ -781,11 +792,13 @@
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             } else {
                 let myPieces = pieces.map((p, idx) => ({...p, idx})).filter(p => p.color === color);
+                
+                let isTimeoutBreak = (phase === 'wall_breaking');
                 let totalMobility = 0;
                 myPieces.forEach(p => totalMobility += getValidMoves(p.r, p.c).length);
                 
                 let myWalls = Array.from(walls.entries()).filter(([k, v]) => v === color);
-                if (playersInfo[color].hasBreaker && myWalls.length > 0 && totalMobility <= 2) {
+                if (playersInfo[color].hasBreaker && myWalls.length > 0 && (totalMobility <= 2 || isTimeoutBreak)) {
                     let randomWallKey = myWalls[Math.floor(Math.random() * myWalls.length)][0];
                     walls.delete(randomWallKey);
                     playersInfo[color].hasBreaker = false;
@@ -932,12 +945,15 @@
                 tBox.className = `timer-box ${isCurrent ? 'timer-active' : ''}`;
                 
                 let cName = getDisplayName(c);
+                // 💡 確保顯示的秒數最小為 0，避免出現 -1, -2 的狀況
+                let displayTime = Math.max(0, playerTimes[c]);
+                
                 tBox.innerHTML = `
                     <div style="display:flex; align-items:center; flex:1;">
                         <span class="dot" style="background-color: ${colorMap[c].color};"></span>
                         <span style="color: ${isCurrent ? 'var(--text-main)' : 'var(--text-sub)'};">${cName}</span>
                     </div>
-                    <span style="color: ${isCurrent ? colorMap[c].color : 'var(--text-sub)'}; margin-left: 10px;">${playerTimes[c]}s</span>
+                    <span style="color: ${isCurrent ? colorMap[c].color : 'var(--text-sub)'}; margin-left: 10px;">${displayTime}s</span>
                 `;
                 timerContainer.appendChild(tBox);
             });
@@ -1159,7 +1175,7 @@
             let anyPlayerCanMove = false;
             if (!gameOver) {
                 for (const color of activeColors) {
-                    if (playersInfo[color].hasBreaker && walls.size > 0) { anyPlayerCanMove = true; break; }
+                    if (playersInfo[color].hasBreaker && Array.from(walls.entries()).filter(([k, v]) => v === color).length > 0) { anyPlayerCanMove = true; break; }
                     const playerPieces = pieces.filter(p => p.color === color);
                     for (const p of playerPieces) {
                         const moves = getValidMoves(p.r, p.c);
@@ -1179,13 +1195,15 @@
                 
                 let sortedColors = [...activeColors].sort((a, b) => scores[b] - scores[a]);
                 
-                let scoreText = sortedColors.map((c, idx) => {
+                let alertScoreText = sortedColors.map((c, idx) => {
                     let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
                     let baseName = getDisplayName(c);
                     let suffix = isMe ? ' (你)' : (isVsAI && c === aiColor ? ' (AI)' : '');
                     
                     return `第 ${idx + 1} 名： ${colorMap[c].icon} ${baseName}${suffix} 領土：${scores[c]} 格`;
                 }).join('\n');
+                
+                let chatScoreText = alertScoreText.replace(/\n/g, '<br>');
                 
                 let maxScore = scores[sortedColors[0]]; 
                 
@@ -1197,7 +1215,7 @@
                 
                 let detailParts = sortedColors.map(c => {
                     let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
-                    let colorChar = getDisplayName(c)[0]; 
+                    let colorChar = colorMap[c].text[0]; 
                     return `${colorChar}${isMe ? '(你)' : ''}:${scores[c]}`;
                 });
 
@@ -1215,20 +1233,20 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(historyRecord)
                     }).then(res => res.json())
-                      .then(data => console.log("戰績已成功同步至 MongoDB！"))
                       .catch(err => console.error("戰績上傳失敗", err));
                 }
                 
-                setTimeout(() => { alert(`🏆 遊戲結束！${reason}。\n\n${scoreText}`); }, 150);
+                appendChatMessage('系統', 'yellow', `🏆 遊戲結束！<br>${reason}<br><br>${chatScoreText}`);
+                
+                setTimeout(() => { 
+                    alert(`🏆 遊戲結束！${reason}\n\n${alertScoreText}`); 
+                }, 150);
             }
         }
 
         function getEl(r, c) { return document.querySelector(`[data-r="${r}"][data-c="${c}"]`); }
         function getPieceIndexAt(r, c) { return pieces.findIndex(p => p.r === r && p.c === c); }
 
-        // ==========================================
-        // 💡 語音系統 (WebRTC + PeerJS) 
-        // ==========================================
         let localStream = null;
         let myPeer = null;
         let isMicOn = false;
@@ -1249,8 +1267,7 @@
                     btn.classList.add('mic-active');
                     btn.innerText = "🎙️";
 
-                    myPeer = new Peer({ debug: 2 });
-                    
+                    myPeer = new Peer();
                     myPeer.on('open', (id) => {
                         let myName = session ? session.name : '玩家';
                         socket.emit('send_chat', { room_code: roomCode, user_name: myName, color: myOnlineColor, message: `[SYS_PEER_ID]:${id}` });
@@ -1293,12 +1310,6 @@
                     audio.id = `audio-${call.peer}`;
                     audio.srcObject = remoteStream;
                     audio.autoplay = true;
-                    
-                    audio.play().catch(e => {
-                        console.error('Audio play error:', e);
-                        appendChatMessage('系統', 'red', '⚠️ 瀏覽器阻擋了語音播放，請點擊畫面任意處再試一次！');
-                    });
-                    
                     document.getElementById('audio-container').appendChild(audio);
                 }
             });
@@ -1312,4 +1323,3 @@
     </script>
 </body>
 </html>
-}
