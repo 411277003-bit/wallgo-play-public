@@ -42,7 +42,6 @@
             gap: 20px;
         }
 
-        /* 左側：狀態與控制按鈕區 */
         .left-sidebar {
             display: flex;
             flex-direction: column;
@@ -85,7 +84,6 @@
         .btn-back { background-color: transparent; border: 1px solid #8c735a; color: #5c4530; }
         .btn-back:hover { background-color: #ebe4d8; color: var(--text-main); }
 
-        /* 中間：棋盤區域 */
         .board-container {
             flex: 1;
             display: flex;
@@ -363,7 +361,7 @@
             .chat-area { width: 85vw; right: -100vw; z-index: 2000;}
             .chat-area.open { right: 10px; }
             .chat-toggle-btn { bottom: 15px; right: 15px; padding: 12px 20px; font-size: 14px; z-index: 1999;}
-            .float-mic-btn { bottom: 15px; left: 15px; width: 48px; height: 48px; font-size: 22px; z-index: 1999;} /* 手機版調整位置 */
+            .float-mic-btn { bottom: 15px; left: 15px; width: 48px; height: 48px; font-size: 22px; z-index: 1999;} 
         }
     </style>
 </head>
@@ -734,12 +732,12 @@
 
                     if (mode === 'online') {
                         if (currentColor === myOnlineColor) {
-                            appendChatMessage('系統', 'yellow', '⏳ 時間耗盡！已幫您隨機移動並建牆。');
+                            appendChatMessage('系統', 'yellow', '⏳ 時間耗盡！AI 已介入代為下棋與建牆。');
                             executeAILogic(currentColor);
                             broadcastGameState();
                         }
                     } else {
-                        appendChatMessage('系統', 'yellow', `⏳ ${baseName}${suffix} 時間耗盡！系統已代為執行。`);
+                        appendChatMessage('系統', 'yellow', `⏳ ${baseName}${suffix} 時間耗盡！AI 已介入代為下棋與建牆。`);
                         executeAILogic(currentColor);
                     }
                 }
@@ -783,13 +781,11 @@
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             } else {
                 let myPieces = pieces.map((p, idx) => ({...p, idx})).filter(p => p.color === color);
-                
-                let isTimeoutBreak = (phase === 'wall_breaking');
                 let totalMobility = 0;
                 myPieces.forEach(p => totalMobility += getValidMoves(p.r, p.c).length);
                 
                 let myWalls = Array.from(walls.entries()).filter(([k, v]) => v === color);
-                if (playersInfo[color].hasBreaker && myWalls.length > 0 && (totalMobility <= 2 || isTimeoutBreak)) {
+                if (playersInfo[color].hasBreaker && myWalls.length > 0 && totalMobility <= 2) {
                     let randomWallKey = myWalls[Math.floor(Math.random() * myWalls.length)][0];
                     walls.delete(randomWallKey);
                     playersInfo[color].hasBreaker = false;
@@ -956,26 +952,27 @@
             let baseName = getDisplayName(currentColor);
             let suffix = (mode === 'online' && currentColor === myOnlineColor) || (!mode && currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
 
-            let phaseText = phase === 'placement' ? '放置階段' : phase === 'movement' ? '移動階段' : phase === 'wall_building' ? '建牆階段' : '破牆階段';
-            turnDisplay.innerText = `當前回合：${baseName}${suffix}\n(${phaseText})`;
+            let phaseText = phase === 'placement' ? '放置階段' : phase === 'movement' ? '移動階段' : phase === 'wall_building' ? '建牆階段 (必須相鄰建牆)' : '破牆階段';
+            turnDisplay.innerText = `當前回合：${baseName}${suffix} (${phaseText})`;
             turnDisplay.style.color = colorMap[currentColor].color;
 
             if (phase === 'placement') instructionDisplay.innerText = "請點擊空白棋格放置棋子";
-            else if (phase === 'movement') instructionDisplay.innerText = selectedPieceIndex === -1 ? "請選擇你的棋子，或使用破牆者" : `請點擊高亮木紋格移動 (已走 ${stepsTaken} / 2 步)\n若不想繼續移動，請「再次點擊自己」確認完成`;
+            else if (phase === 'movement') instructionDisplay.innerText = selectedPieceIndex === -1 ? "請選擇你的棋子，或使用破牆者" : `請點擊高亮綠格移動 (已走 ${stepsTaken} / 2 步)\n若不想繼續移動，請「再次點擊自己的棋子」確認完成`;
             else if (phase === 'wall_building') instructionDisplay.innerText = "請在剛移動的棋子四周放置一道牆";
             else if (phase === 'wall_breaking') instructionDisplay.innerText = "請選擇場上一道【你建立的牆壁】將其拆除";
 
             let statusArray = activeColors.map(c => {
-                return `${getDisplayName(c)}(${playersInfo[c].hasBreaker?"可":"無"})`;
+                let name = getDisplayName(c) + (isVsAI && c === aiColor ? '(AI)' : '');
+                return `${name}(${playersInfo[c].hasBreaker?"可":"無"})`;
             });
-            breakerDisplay.innerHTML = `破牆者狀態：<br>` + statusArray.join(" | ");
+            breakerDisplay.innerText = `破牆者：` + statusArray.join(" | ");
             btnBreaker.disabled = (phase !== 'movement' || stepsTaken > 0 || !playersInfo[currentColor].hasBreaker);
         }
 
         function checkMyTurn(currentColor) {
             if (mode === 'online') {
                 if (myOnlineColor === null) { alert("尚未獲取陣營分配，請稍候..."); return false; }
-                if (currentColor !== myOnlineColor) { alert("還沒輪到您喔！請等待對手下棋。"); return false; }
+                if (currentColor !== myOnlineColor) { alert("還沒輪到你喔！請等待對手下棋。"); return false; }
             }
             return true;
         }
@@ -1162,7 +1159,7 @@
             let anyPlayerCanMove = false;
             if (!gameOver) {
                 for (const color of activeColors) {
-                    if (playersInfo[color].hasBreaker && Array.from(walls.entries()).filter(([k, v]) => v === color).length > 0) { anyPlayerCanMove = true; break; }
+                    if (playersInfo[color].hasBreaker && walls.size > 0) { anyPlayerCanMove = true; break; }
                     const playerPieces = pieces.filter(p => p.color === color);
                     for (const p of playerPieces) {
                         const moves = getValidMoves(p.r, p.c);
@@ -1182,15 +1179,13 @@
                 
                 let sortedColors = [...activeColors].sort((a, b) => scores[b] - scores[a]);
                 
-                let alertScoreText = sortedColors.map((c, idx) => {
+                let scoreText = sortedColors.map((c, idx) => {
                     let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
                     let baseName = getDisplayName(c);
                     let suffix = isMe ? ' (你)' : (isVsAI && c === aiColor ? ' (AI)' : '');
                     
                     return `第 ${idx + 1} 名： ${colorMap[c].icon} ${baseName}${suffix} 領土：${scores[c]} 格`;
                 }).join('\n');
-                
-                let chatScoreText = alertScoreText.replace(/\n/g, '<br>');
                 
                 let maxScore = scores[sortedColors[0]]; 
                 
@@ -1202,7 +1197,7 @@
                 
                 let detailParts = sortedColors.map(c => {
                     let isMe = (mode === 'online' && c === myOnlineColor) || (mode !== 'online' && c === 'red');
-                    let colorChar = colorMap[c].text[0]; 
+                    let colorChar = getDisplayName(c)[0]; 
                     return `${colorChar}${isMe ? '(你)' : ''}:${scores[c]}`;
                 });
 
@@ -1220,14 +1215,11 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(historyRecord)
                     }).then(res => res.json())
+                      .then(data => console.log("戰績已成功同步至 MongoDB！"))
                       .catch(err => console.error("戰績上傳失敗", err));
                 }
                 
-                appendChatMessage('系統', 'yellow', `🏆 遊戲結束！<br>${reason}<br><br>${chatScoreText}`);
-                
-                setTimeout(() => { 
-                    alert(`🏆 遊戲結束！${reason}\n\n${alertScoreText}`); 
-                }, 150);
+                setTimeout(() => { alert(`🏆 遊戲結束！${reason}。\n\n${scoreText}`); }, 150);
             }
         }
 
@@ -1246,8 +1238,6 @@
             
             if (!isMicOn) {
                 try {
-                    // 防呆檢查：如果使用者直接雙擊打開本地 html 檔案 (file://)
-                    // 瀏覽器會強制封鎖麥克風權限，必須使用 localhost 或 https
                     if (window.location.protocol === 'file:') {
                         alert("⚠️ 瀏覽器安全限制：\n麥克風功能無法在直接點開的本地檔案 (file://) 中使用。\n\n請使用 VS Code 的 Live Server 啟動，或是將遊戲上傳至 https 網域才能正常收音！");
                         return;
@@ -1259,7 +1249,8 @@
                     btn.classList.add('mic-active');
                     btn.innerText = "🎙️";
 
-                    myPeer = new Peer();
+                    myPeer = new Peer({ debug: 2 });
+                    
                     myPeer.on('open', (id) => {
                         let myName = session ? session.name : '玩家';
                         socket.emit('send_chat', { room_code: roomCode, user_name: myName, color: myOnlineColor, message: `[SYS_PEER_ID]:${id}` });
@@ -1277,7 +1268,6 @@
                     console.error("Mic error:", err);
                 }
             } else {
-                // 關閉麥克風
                 if (localStream) {
                     localStream.getTracks().forEach(track => track.stop());
                     localStream = null;
@@ -1288,7 +1278,6 @@
                 }
                 isMicOn = false;
                 
-                // 恢復為「關閉狀態」的外觀
                 btn.classList.remove('mic-active');
                 btn.innerText = "🎤";
                 
@@ -1304,6 +1293,12 @@
                     audio.id = `audio-${call.peer}`;
                     audio.srcObject = remoteStream;
                     audio.autoplay = true;
+                    
+                    audio.play().catch(e => {
+                        console.error('Audio play error:', e);
+                        appendChatMessage('系統', 'red', '⚠️ 瀏覽器阻擋了語音播放，請點擊畫面任意處再試一次！');
+                    });
+                    
                     document.getElementById('audio-container').appendChild(audio);
                 }
             });
@@ -1317,3 +1312,4 @@
     </script>
 </body>
 </html>
+}
