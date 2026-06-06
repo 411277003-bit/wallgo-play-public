@@ -944,7 +944,6 @@
                 tBox.className = `timer-box ${isCurrent ? 'timer-active' : ''}`;
                 
                 let cName = getDisplayName(c);
-                // 💡 確保顯示的秒數最小為 0，避免出現 -1, -2 的狀況
                 let displayTime = Math.max(0, playerTimes[c]);
                 
                 tBox.innerHTML = `
