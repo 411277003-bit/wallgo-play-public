@@ -85,7 +85,7 @@
         .btn-back { background-color: transparent; border: 1px solid #8c735a; color: #5c4530; }
         .btn-back:hover { background-color: #ebe4d8; color: var(--text-main); }
 
-        /* 💡 中間：棋盤區域 */
+        /* 中間：棋盤區域 */
         .board-container {
             flex: 1;
             display: flex;
@@ -138,6 +138,44 @@
         .selected { transform: scale(1.15); box-shadow: 0 0 0 3px rgba(74, 54, 35, 0.8), 0 5px 15px rgba(0,0,0,0.3); }
 
         .right-spacer { width: 240px; flex-shrink: 0; }
+
+        /* 💡 新增：漂浮的麥克風按鈕樣式 */
+        .float-mic-btn {
+            position: fixed;
+            left: 30px;
+            bottom: 30px;
+            background-color: #d0c5b5;
+            color: #5c4530;
+            border-radius: 50%;
+            width: 54px;
+            height: 54px;
+            font-size: 26px;
+            display: none; /* 預設隱藏，連線模式再顯示 */
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(140, 115, 90, 0.3);
+            z-index: 1000;
+            cursor: pointer;
+            border: 2px solid white;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            padding: 0;
+        }
+        .float-mic-btn:hover {
+            transform: scale(1.1);
+            background-color: var(--btn-beige);
+        }
+        .float-mic-btn.mic-active {
+            background-color: var(--color-green); /* 開啟時變成綠色 */
+            color: white;
+            border-color: #ffffff;
+            box-shadow: 0 0 15px rgba(72, 166, 102, 0.6);
+            animation: pulse-mic 1.5s infinite;
+        }
+        @keyframes pulse-mic {
+            0% { box-shadow: 0 0 0 0 rgba(72, 166, 102, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(72, 166, 102, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(72, 166, 102, 0); }
+        }
 
         .chat-toggle-btn {
             position: fixed;
@@ -313,39 +351,21 @@
             font-weight: bold;
         }
 
-        /* 💡 響應式：手機或窄螢幕時，徹底適應螢幕寬度且防溢出 */
+        /* 響應式 */
         @media (max-width: 900px) {
-            body { 
-                flex-direction: column; 
-                padding: 10px; 
-                gap: 15px; 
-                overflow-y: auto; 
-                overflow-x: hidden; 
-                height: auto; 
-                justify-content: flex-start;
-            }
+            body { flex-direction: column; padding: 10px; gap: 15px; overflow-y: auto; overflow-x: hidden; height: auto; justify-content: flex-start; }
             .left-sidebar { width: 100%; max-width: 600px; height: auto; }
             .right-spacer { display: none; }
             .timer-container { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 5px;}
             .timer-box { flex: 1; min-width: 45%; justify-content: center;}
             .controls { flex-direction: row; flex-wrap: wrap; gap: 8px;}
             .controls button { flex: 1; min-width: 30%; padding: 12px 10px; font-size: 13px;}
-            .board-container { 
-                width: 100%; 
-                max-width: 100%; 
-                padding-bottom: 80px; 
-            }
-            .board { 
-                width: 94vw; 
-                height: 94vw; 
-                max-width: 500px; 
-                max-height: 500px;
-                padding: 8px; 
-                border-radius: 12px;
-            }
+            .board-container { width: 100%; max-width: 100%; padding-bottom: 80px; }
+            .board { width: 94vw; height: 94vw; max-width: 500px; max-height: 500px; padding: 8px; border-radius: 12px; }
             .chat-area { width: 85vw; right: -100vw; z-index: 2000;}
             .chat-area.open { right: 10px; }
             .chat-toggle-btn { bottom: 15px; right: 15px; padding: 12px 20px; font-size: 14px; z-index: 1999;}
+            .float-mic-btn { bottom: 15px; left: 15px; width: 48px; height: 48px; font-size: 22px; z-index: 1999;} /* 手機版調整位置 */
         }
     </style>
 </head>
@@ -365,7 +385,6 @@
         </div>
 
         <div class="controls">
-            <button id="btn-mic" onclick="toggleMic()" style="display:none; background-color: #d0c5b5; color: #8c735a;">🎤 開啟語音 (麥克風)</button>
             <button id="btn-breaker" onclick="toggleWallBreaker()">使用破牆者</button>
             <button id="btn-reset" onclick="resetGame(true)">重新開始</button>
             <button class="btn-back" onclick="backToMenu()">回主選單</button>
@@ -379,6 +398,8 @@
     </div>
 
     <div class="right-spacer"></div>
+
+    <button id="float-mic-btn" class="float-mic-btn" onclick="toggleMic()" title="開啟/關閉語音">🎤</button>
 
     <button class="chat-toggle-btn" onclick="toggleChat()">
         💬 展開聊天室
@@ -476,7 +497,6 @@
             }
         }
 
-        // 💡 修改：連線事件區塊，加入 PeerJS 的隱藏配對碼攔截
         if (mode === 'online') {
             socket = io(API_URL);
             socket.emit('join_game_room', { room_code: roomCode, user_id: session.id });
@@ -486,8 +506,8 @@
                 if (data.room_players) colorToName = data.room_players;
                 updateUI();
                 
-                // 💡 顯示麥克風按鈕
-                document.getElementById('btn-mic').style.display = 'block';
+                // 💡 在線上模式時，顯示左下角的小麥克風按鈕
+                document.getElementById('float-mic-btn').style.display = 'flex';
 
                 if (myOnlineColor !== 'red') {
                     setTimeout(() => {
@@ -513,7 +533,6 @@
             });
 
             socket.on('receive_chat', (data) => {
-                // 💡 新增：攔截隱藏的 WebRTC 語音配對碼
                 if (data.message.startsWith('[SYS_PEER_ID]:')) {
                     if (isMicOn && data.color !== myOnlineColor) {
                         const remotePeerId = data.message.split(':')[1];
@@ -522,7 +541,7 @@
                             handleCallStream(call);
                         }
                     }
-                    return; // 這是系統隱藏碼，直接 return 不顯示在聊天室
+                    return; 
                 }
 
                 appendChatMessage(data.user_name, data.color, data.message);
@@ -1219,42 +1238,47 @@
         function getPieceIndexAt(r, c) { return pieces.findIndex(p => p.r === r && p.c === c); }
 
         // ==========================================
-        // 💡 語音系統 (WebRTC + PeerJS)
+        // 💡 語音系統 (WebRTC + PeerJS) 
         // ==========================================
         let localStream = null;
         let myPeer = null;
         let isMicOn = false;
 
         async function toggleMic() {
-            const btn = document.getElementById('btn-mic');
+            const btn = document.getElementById('float-mic-btn');
+            
             if (!isMicOn) {
                 try {
-                    // 1. 取得麥克風權限
+                    // 💡 防呆檢查：如果使用者直接雙擊打開本地 html 檔案 (file://)
+                    // 瀏覽器會強制封鎖麥克風權限，必須使用 localhost 或 https
+                    if (window.location.protocol === 'file:') {
+                        alert("⚠️ 瀏覽器安全限制：\n麥克風功能無法在直接點開的本地檔案 (file://) 中使用。\n\n請使用 VS Code 的 Live Server 啟動，或是將遊戲上傳至 https 網域才能正常收音！");
+                        return;
+                    }
+
                     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                     isMicOn = true;
-                    btn.innerText = "🔊 語音已開啟 (點擊關閉)";
-                    btn.style.backgroundColor = "var(--color-green)";
-                    btn.style.color = "white";
+                    
+                    // 改變按鈕為「開啟狀態」的外觀
+                    btn.classList.add('mic-active');
+                    btn.innerText = "🎙️";
 
-                    // 2. 初始化 P2P 連線
                     myPeer = new Peer();
                     myPeer.on('open', (id) => {
-                        // 3. 透過聊天室廣播自己的通話 ID 給全房間
                         let myName = session ? session.name : '玩家';
                         socket.emit('send_chat', { room_code: roomCode, user_name: myName, color: myOnlineColor, message: `[SYS_PEER_ID]:${id}` });
                     });
 
-                    // 4. 接聽其他人的通話
                     myPeer.on('call', (call) => {
                         call.answer(localStream);
                         handleCallStream(call);
                     });
 
-                    appendChatMessage('系統', 'yellow', '🎤 麥克風已開啟，當其他玩家也開啟時即可通話！');
+                    appendChatMessage('系統', 'yellow', '🎤 麥克風已開啟。');
 
                 } catch (err) {
-                    alert("無法存取麥克風！請確認您已允許瀏覽器的麥克風權限。");
-                    console.error(err);
+                    alert("無法存取麥克風！請確認網址開頭是 https 或 localhost，並且已允許麥克風權限。");
+                    console.error("Mic error:", err);
                 }
             } else {
                 // 關閉麥克風
@@ -1267,15 +1291,16 @@
                     myPeer = null;
                 }
                 isMicOn = false;
-                btn.innerText = "🎤 開啟語音 (麥克風)";
-                btn.style.backgroundColor = "#d0c5b5";
-                btn.style.color = "#8c735a";
+                
+                // 恢復為「關閉狀態」的外觀
+                btn.classList.remove('mic-active');
+                btn.innerText = "🎤";
+                
                 document.getElementById('audio-container').innerHTML = '';
                 appendChatMessage('系統', 'yellow', '🔇 麥克風已關閉。');
             }
         }
 
-        // 處理接收到的音訊流並播放
         function handleCallStream(call) {
             call.on('stream', (remoteStream) => {
                 if (!document.getElementById(`audio-${call.peer}`)) {
@@ -1292,7 +1317,6 @@
             });
         }
 
-        // 初始化時，傳入 false 避免覆蓋連線進度
         resetGame(false);
     </script>
 </body>
