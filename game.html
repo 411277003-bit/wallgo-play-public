@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>牆壁戰棋 (Wall Go) - 戰鬥中</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 
@@ -364,10 +365,13 @@
         </div>
 
         <div class="controls">
+            <button id="btn-mic" onclick="toggleMic()" style="display:none; background-color: #d0c5b5; color: #8c735a;">🎤 開啟語音 (麥克風)</button>
             <button id="btn-breaker" onclick="toggleWallBreaker()">使用破牆者</button>
             <button id="btn-reset" onclick="resetGame(true)">重新開始</button>
             <button class="btn-back" onclick="backToMenu()">回主選單</button>
         </div>
+        
+        <div id="audio-container" style="display:none;"></div>
     </div>
 
     <div class="board-container">
@@ -472,6 +476,7 @@
             }
         }
 
+        // 💡 修改：連線事件區塊，加入 PeerJS 的隱藏配對碼攔截
         if (mode === 'online') {
             socket = io(API_URL);
             socket.emit('join_game_room', { room_code: roomCode, user_id: session.id });
@@ -481,7 +486,9 @@
                 if (data.room_players) colorToName = data.room_players;
                 updateUI();
                 
-                // 💡 新增：如果不是房主 (紅色)，加入時發送隱藏訊息請求同步狀態
+                // 💡 顯示麥克風按鈕
+                document.getElementById('btn-mic').style.display = 'block';
+
                 if (myOnlineColor !== 'red') {
                     setTimeout(() => {
                         socket.emit('send_chat', { room_code: roomCode, user_name: '系統', color: 'yellow', message: '🔄 新玩家加入，請求同步狀態...' });
@@ -506,9 +513,20 @@
             });
 
             socket.on('receive_chat', (data) => {
+                // 💡 新增：攔截隱藏的 WebRTC 語音配對碼
+                if (data.message.startsWith('[SYS_PEER_ID]:')) {
+                    if (isMicOn && data.color !== myOnlineColor) {
+                        const remotePeerId = data.message.split(':')[1];
+                        if (myPeer) {
+                            const call = myPeer.call(remotePeerId, localStream);
+                            handleCallStream(call);
+                        }
+                    }
+                    return; // 這是系統隱藏碼，直接 return 不顯示在聊天室
+                }
+
                 appendChatMessage(data.user_name, data.color, data.message);
                 
-                // 💡 新增：房主收到同步請求後，將自己最新的正確棋盤廣播給全房
                 if (data.message === '🔄 新玩家加入，請求同步狀態...' && myOnlineColor === 'red') {
                     broadcastGameState();
                 }
@@ -631,7 +649,6 @@
 
         function backToMenu() { window.location.href = 'index.html'; }
 
-        // 💡 替換：新增 e 參數判斷是否為手動點擊
         function resetGame(e) {
             let isManual = (e instanceof Event) || e === true;
             
@@ -652,7 +669,6 @@
             startClock(); 
             checkAITurn(); 
             
-            // 💡 只有「手動點擊重新開始」時才覆蓋線上房間的棋盤
             if (mode === 'online' && isManual) {
                 broadcastGameState();
                 appendChatMessage('系統', 'yellow', '🔄 房間已重新開始新的一局！');
@@ -679,7 +695,6 @@
             render();
         }
 
-        // 💡 替換：修改計時器邏輯
         function startClock() {
             if (clockInterval) clearInterval(clockInterval);
             if (phase === 'game_over') return;
@@ -692,7 +707,6 @@
 
                 let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
 
-                // 確保秒數大於 0 才繼續扣除
                 if (playerTimes[currentColor] > 0) {
                     playerTimes[currentColor]--;
                     updateUI();
@@ -703,7 +717,6 @@
                     let suffix = (mode === 'online' && currentColor === myOnlineColor) || (!mode && currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
 
                     if (mode === 'online') {
-                        // 在線上模式，只有輪到「自己」的回合超時，才由本地執行 AI 並廣播給其他人
                         if (currentColor === myOnlineColor) {
                             appendChatMessage('系統', 'yellow', '⏳ 時間耗盡！已幫您隨機移動並建牆。');
                             executeAILogic(currentColor);
@@ -723,9 +736,7 @@
             playerTimes[currentColor] = TURN_TIME_LIMIT;
         }
 
-        // 💡 替換：加入超時自動下棋的防呆處理
         function executeAILogic(color) {
-            // 💡 新增：如果玩家走到一半 (走 1 步) 超時，強制轉為建牆階段，避免 AI 判定崩潰
             if (phase === 'movement' && stepsTaken > 0 && selectedPieceIndex !== -1) {
                 movedPieceIndex = selectedPieceIndex;
                 selectedPieceIndex = -1;
@@ -1206,6 +1217,80 @@
 
         function getEl(r, c) { return document.querySelector(`[data-r="${r}"][data-c="${c}"]`); }
         function getPieceIndexAt(r, c) { return pieces.findIndex(p => p.r === r && p.c === c); }
+
+        // ==========================================
+        // 💡 語音系統 (WebRTC + PeerJS)
+        // ==========================================
+        let localStream = null;
+        let myPeer = null;
+        let isMicOn = false;
+
+        async function toggleMic() {
+            const btn = document.getElementById('btn-mic');
+            if (!isMicOn) {
+                try {
+                    // 1. 取得麥克風權限
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    isMicOn = true;
+                    btn.innerText = "🔊 語音已開啟 (點擊關閉)";
+                    btn.style.backgroundColor = "var(--color-green)";
+                    btn.style.color = "white";
+
+                    // 2. 初始化 P2P 連線
+                    myPeer = new Peer();
+                    myPeer.on('open', (id) => {
+                        // 3. 透過聊天室廣播自己的通話 ID 給全房間
+                        let myName = session ? session.name : '玩家';
+                        socket.emit('send_chat', { room_code: roomCode, user_name: myName, color: myOnlineColor, message: `[SYS_PEER_ID]:${id}` });
+                    });
+
+                    // 4. 接聽其他人的通話
+                    myPeer.on('call', (call) => {
+                        call.answer(localStream);
+                        handleCallStream(call);
+                    });
+
+                    appendChatMessage('系統', 'yellow', '🎤 麥克風已開啟，當其他玩家也開啟時即可通話！');
+
+                } catch (err) {
+                    alert("無法存取麥克風！請確認您已允許瀏覽器的麥克風權限。");
+                    console.error(err);
+                }
+            } else {
+                // 關閉麥克風
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                    localStream = null;
+                }
+                if (myPeer) {
+                    myPeer.destroy();
+                    myPeer = null;
+                }
+                isMicOn = false;
+                btn.innerText = "🎤 開啟語音 (麥克風)";
+                btn.style.backgroundColor = "#d0c5b5";
+                btn.style.color = "#8c735a";
+                document.getElementById('audio-container').innerHTML = '';
+                appendChatMessage('系統', 'yellow', '🔇 麥克風已關閉。');
+            }
+        }
+
+        // 處理接收到的音訊流並播放
+        function handleCallStream(call) {
+            call.on('stream', (remoteStream) => {
+                if (!document.getElementById(`audio-${call.peer}`)) {
+                    const audio = document.createElement('audio');
+                    audio.id = `audio-${call.peer}`;
+                    audio.srcObject = remoteStream;
+                    audio.autoplay = true;
+                    document.getElementById('audio-container').appendChild(audio);
+                }
+            });
+            call.on('close', () => {
+                const audio = document.getElementById(`audio-${call.peer}`);
+                if (audio) audio.remove();
+            });
+        }
 
         // 初始化時，傳入 false 避免覆蓋連線進度
         resetGame(false);
