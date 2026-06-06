@@ -362,9 +362,7 @@
 
         <button class="rules-btn" onclick="openModal('rules-modal')">📄 查看遊戲規則</button>
     </div>
-
-    <!-- 彈出視窗：房間、好友、資料、規則等 (維持原本程式碼即可) -->
-    <!-- (這裡省略以節省篇幅，保留你原本的 HTML 結構) -->
+    
     <div id="room-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px; text-align: center;">
             <div id="room-ui-main">
@@ -572,7 +570,7 @@
                 });
                 const result = await response.json();
                 if (result.success) {
-                    alert(`註冊成功！寫入資料庫完畢。\n\n你的專屬玩家 ID 是：${result.user.id}\n請務必牢記你的 ID 與密碼。`);
+                    alert(`註冊成功！。\n\n你的專屬玩家 ID 是：${result.user.id}\n請務必牢記你的 ID 與密碼。`);
                     currentUser = { ...result.user }; 
                     localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
                     document.getElementById('reg-name').value = "";
@@ -602,7 +600,7 @@
             } catch (error) { alert("無法連線到伺服器，請確認後端已成功啟動！"); }
         }
 
-        // 💡 修改載入戰績邏輯：加入勝率計算
+        //勝率計算
         async function loadHistory() {
             const listEl = document.getElementById('history-list');
             const totalGamesEl = document.getElementById('total-games');
@@ -629,7 +627,6 @@
                     
                     listEl.innerHTML = '';
                     history.slice().reverse().forEach(record => {
-                        // 如果贏家字串中包含 "(你)"，代表是自己獲勝
                         if (record.winner.includes('(你)')) {
                             wins++;
                         }
