@@ -5,17 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>牆壁戰棋 (Wall Go) - 戰鬥中</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
-    
-    <script type="importmap">
-      {
-        "imports": {
-          "@tensorflow/tfjs": "https://esm.sh/@tensorflow/tfjs@4.22.0"
-        }
-      }
-    </script>
-    </script>
-    </script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 
@@ -95,7 +84,7 @@
         .btn-back { background-color: transparent; border: 1px solid #8c735a; color: #5c4530; }
         .btn-back:hover { background-color: #ebe4d8; color: var(--text-main); }
 
-        /* 中間：棋盤區域 */
+        /* 💡 中間：棋盤區域 */
         .board-container {
             flex: 1;
             display: flex;
@@ -323,6 +312,7 @@
             font-weight: bold;
         }
 
+        /* 💡 響應式：手機或窄螢幕時，徹底適應螢幕寬度且防溢出 */
         @media (max-width: 900px) {
             body { 
                 flex-direction: column; 
@@ -362,7 +352,7 @@
 
     <div class="left-sidebar">
         <div class="status-panel">
-            <h2 id="turn-display">當先前合：載入中...</h2>
+            <h2 id="turn-display">當前回合：載入中...</h2>
             <p id="instruction-display">請執行動作</p>
             <div id="online-identity-display" style="display:none;"></div>
             
@@ -375,7 +365,7 @@
 
         <div class="controls">
             <button id="btn-breaker" onclick="toggleWallBreaker()">使用破牆者</button>
-            <button id="btn-reset" onclick="resetGame()">重新開始</button>
+            <button id="btn-reset" onclick="resetGame(true)">重新開始</button>
             <button class="btn-back" onclick="backToMenu()">回主選單</button>
         </div>
     </div>
@@ -420,24 +410,7 @@
         </div>
     </div>
 
-    <script type="module">
-        import * as tf from '@tensorflow/tfjs';
-        import { WallGoGame } from './wallgo_logic.js';
-        import { WallGoAI } from './ai_agent.js';
-
-        // 🌟 初始化 AlphaZero 大腦
-        let aiBrain = new WallGoAI();
-
-        // 🌟 【重大修正】從加載 JSON 權重，全面改為加載 TensorFlow.js 的 ResNet 殘差類神經網路大腦
-        tf.loadLayersModel('./model.json?' + new Date().getTime())
-            .then(model => {
-                aiBrain.model = model;
-                console.log("🧠 成功載入 AlphaZero ResNet 雙頭類神經網絡模型！");
-            })
-            .catch(err => {
-                console.log("⚠️ 找不到 alpha_model/model.json，將自動啟用隨機合法步數備用機制。");
-            });
-
+    <script>
         const API_URL = 'https://wallgo-play.onrender.com';
         const boardSize = 13; 
         let phase = 'placement'; 
@@ -464,14 +437,14 @@
         let pieces = []; 
         let walls = new Map(); 
         let playersInfo = {};
-        let playerTimes = {}; 
+        let stepsTaken = 0;
         let territories = new Map(); 
         
         const TURN_TIME_LIMIT = 90; 
+        let playerTimes = {}; 
         let clockInterval = null;
         let selectedPieceIndex = -1; 
         let movedPieceIndex = -1; 
-        let stepsTaken = 0;
 
         let colorToName = {};
 
@@ -507,6 +480,13 @@
                 myOnlineColor = data.my_color;
                 if (data.room_players) colorToName = data.room_players;
                 updateUI();
+                
+                // 💡 新增：如果不是房主 (紅色)，加入時發送隱藏訊息請求同步狀態
+                if (myOnlineColor !== 'red') {
+                    setTimeout(() => {
+                        socket.emit('send_chat', { room_code: roomCode, user_name: '系統', color: 'yellow', message: '🔄 新玩家加入，請求同步狀態...' });
+                    }, 500);
+                }
             });
 
             socket.on('update_board', (data) => {
@@ -527,6 +507,11 @@
 
             socket.on('receive_chat', (data) => {
                 appendChatMessage(data.user_name, data.color, data.message);
+                
+                // 💡 新增：房主收到同步請求後，將自己最新的正確棋盤廣播給全房
+                if (data.message === '🔄 新玩家加入，請求同步狀態...' && myOnlineColor === 'red') {
+                    broadcastGameState();
+                }
             });
         }
 
@@ -646,8 +631,11 @@
 
         function backToMenu() { window.location.href = 'index.html'; }
 
-        function resetGame() {
-            clearInterval(clockInterval);
+        // 💡 替換：新增 e 參數判斷是否為手動點擊
+        function resetGame(e) {
+            let isManual = (e instanceof Event) || e === true;
+            
+            if (clockInterval) clearInterval(clockInterval);
             activeColors = allColors.slice(0, playerCount);
             placementQueue = [...activeColors, ...[...activeColors].reverse()];
             movementOrder = [...activeColors];
@@ -664,7 +652,8 @@
             startClock(); 
             checkAITurn(); 
             
-            if (mode === 'online') {
+            // 💡 只有「手動點擊重新開始」時才覆蓋線上房間的棋盤
+            if (mode === 'online' && isManual) {
                 broadcastGameState();
                 appendChatMessage('系統', 'yellow', '🔄 房間已重新開始新的一局！');
                 socket.emit('send_chat', { room_code: roomCode, user_name: '系統', color: 'yellow', message: '🔄 房間已重新開始新的一局！' });
@@ -690,29 +679,39 @@
             render();
         }
 
+        // 💡 替換：修改計時器邏輯
         function startClock() {
-            clearInterval(clockInterval);
+            if (clockInterval) clearInterval(clockInterval);
             if (phase === 'game_over') return;
+            
             clockInterval = setInterval(() => {
+                if (phase === 'game_over') {
+                    clearInterval(clockInterval);
+                    return;
+                }
+
                 let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
-                playerTimes[currentColor]--; 
-                updateUI(); 
-                
+
+                // 確保秒數大於 0 才繼續扣除
+                if (playerTimes[currentColor] > 0) {
+                    playerTimes[currentColor]--;
+                    updateUI();
+                }
+
                 if (playerTimes[currentColor] <= 0) {
-                    clearInterval(clockInterval); 
-                    
                     let baseName = getDisplayName(currentColor);
                     let suffix = (mode === 'online' && currentColor === myOnlineColor) || (!mode && currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
-                    
+
                     if (mode === 'online') {
+                        // 在線上模式，只有輪到「自己」的回合超時，才由本地執行 AI 並廣播給其他人
                         if (currentColor === myOnlineColor) {
                             appendChatMessage('系統', 'yellow', '⏳ 時間耗盡！已幫您隨機移動並建牆。');
-                            executeAILogic(currentColor); 
+                            executeAILogic(currentColor);
                             broadcastGameState();
                         }
                     } else {
                         appendChatMessage('系統', 'yellow', `⏳ ${baseName}${suffix} 時間耗盡！系統已代為執行。`);
-                        executeAILogic(currentColor); 
+                        executeAILogic(currentColor);
                     }
                 }
             }, 1000);
@@ -724,7 +723,16 @@
             playerTimes[currentColor] = TURN_TIME_LIMIT;
         }
 
-        async function executeAILogic(color) {
+        // 💡 替換：加入超時自動下棋的防呆處理
+        function executeAILogic(color) {
+            // 💡 新增：如果玩家走到一半 (走 1 步) 超時，強制轉為建牆階段，避免 AI 判定崩潰
+            if (phase === 'movement' && stepsTaken > 0 && selectedPieceIndex !== -1) {
+                movedPieceIndex = selectedPieceIndex;
+                selectedPieceIndex = -1;
+                stepsTaken = 0;
+                phase = 'wall_building';
+            }
+
             if (phase === 'placement') {
                 let emptyCells = [];
                 for (let r = 0; r < boardSize; r += 2) {
@@ -738,9 +746,15 @@
                 }
                 turnIndex++;
                 if (turnIndex >= placementQueue.length) { phase = 'movement'; turnIndex = 0; }
-                
-            } else if (phase === 'movement' || phase === 'wall_building' || phase === 'wall_breaking') {
-                
+            } else if (phase === 'wall_building') {
+                let possibleWalls = getValidWalls(pieces[movedPieceIndex].r, pieces[movedPieceIndex].c);
+                if (possibleWalls.length > 0) {
+                    let w = possibleWalls[Math.floor(Math.random() * possibleWalls.length)];
+                    walls.set(`${w.r},${w.c}`, color);
+                }
+                movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
+                turnIndex = (turnIndex + 1) % movementOrder.length;
+            } else {
                 let myPieces = pieces.map((p, idx) => ({...p, idx})).filter(p => p.color === color);
                 
                 let isTimeoutBreak = (phase === 'wall_breaking');
@@ -748,26 +762,41 @@
                 myPieces.forEach(p => totalMobility += getValidMoves(p.r, p.c).length);
                 
                 let myWalls = Array.from(walls.entries()).filter(([k, v]) => v === color);
-                
                 if (playersInfo[color].hasBreaker && myWalls.length > 0 && (totalMobility <= 2 || isTimeoutBreak)) {
                     let randomWallKey = myWalls[Math.floor(Math.random() * myWalls.length)][0];
                     walls.delete(randomWallKey);
                     playersInfo[color].hasBreaker = false;
-                    console.log(`🧨 AI 使用破牆者，拆除牆壁: ${randomWallKey}`);
                 }
 
-                let simulatedGame = new WallGoGame();
-                simulatedGame.boardSize = boardSize;
-                simulatedGame.pieces = JSON.parse(JSON.stringify(pieces));
-                simulatedGame.walls = new Map(walls);
-                
-                let action = await aiBrain.getBestMove(simulatedGame, color);
+                let bestAction = null;
+                let bestScore = -Infinity;
 
-                if (action) {
-                    pieces[action.pIdx].r = action.mr;
-                    pieces[action.pIdx].c = action.mc;
-                    walls.set(`${action.wr},${action.wc}`, color);
-                    console.log(`🤖 ResNet AI 決定移動棋子 ${action.pIdx} 並在 (${action.wr}, ${action.wc}) 建牆`);
+                myPieces.forEach(p => {
+                    let moves = getValidMoves(p.r, p.c);
+                    moves.forEach(m => {
+                        let oldR = p.r; let oldC = p.c;
+                        p.r = m.r; p.c = m.c; 
+                        let vWalls = getValidWalls(m.r, m.c); 
+                        
+                        vWalls.forEach(w => {
+                            walls.set(`${w.r},${w.c}`, color);
+                            let score = evaluateBoard(color);
+                            score += Math.random() * 0.1; 
+
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestAction = { pIdx: p.idx, mr: m.r, mc: m.c, wr: w.r, wc: w.c };
+                            }
+                            walls.delete(`${w.r},${w.c}`);
+                        });
+                        p.r = oldR; p.c = oldC; 
+                    });
+                });
+
+                if (bestAction) {
+                    pieces[bestAction.pIdx].r = bestAction.mr;
+                    pieces[bestAction.pIdx].c = bestAction.mc;
+                    walls.set(`${bestAction.wr},${bestAction.wc}`, color);
                 } else {
                     if (myPieces.length > 0) {
                         let fallbackP = myPieces[0];
@@ -776,10 +805,7 @@
                     }
                 }
                 
-                movedPieceIndex = -1; 
-                selectedPieceIndex = -1; 
-                stepsTaken = 0; 
-                phase = 'movement';
+                movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             }
 
@@ -789,16 +815,36 @@
             checkAITurn(); 
         }
 
+        function evaluateBoard(aiColor) {
+            let score = 0;
+            let aiMobility = 0;
+            let oppMobility = 0;
+
+            pieces.forEach(p => {
+                let movesCount = getValidMoves(p.r, p.c).length;
+                if (p.color === aiColor) {
+                    aiMobility += movesCount;
+                    score -= (Math.abs(p.r - 6) + Math.abs(p.c - 6)) * 0.5;
+                } else {
+                    oppMobility += movesCount;
+                }
+            });
+
+            score += (aiMobility * 2.5) - oppMobility;
+            if (aiMobility === 0) score -= 10000;
+            return score;
+        }
+
         function checkAITurn() {
             if (phase === 'game_over' || mode === 'online') { isProcessing = false; return; }
             let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
             
             if (isVsAI && currentColor === aiColor) {
                 isProcessing = true; 
-                instructionDisplay.innerText = "🤖 類神經網絡與 MCTS 正在進行神級思維演算...";
+                instructionDisplay.innerText = "🤖 電腦正在思考最佳路徑...";
                 setTimeout(() => {
-                    executeAILogic(currentColor); 
-                }, 400);
+                    executeAILogic(currentColor);
+                }, 800);
             } else {
                 isProcessing = false; 
             }
@@ -888,7 +934,7 @@
             turnDisplay.style.color = colorMap[currentColor].color;
 
             if (phase === 'placement') instructionDisplay.innerText = "請點擊空白棋格放置棋子";
-            else if (phase === 'movement') instructionDisplay.innerText = selectedPieceIndex === -1 ? "請選擇你的棋子，或使用破牆者" : `請點擊高亮木紋格移動 (已走 ${stepsTaken} / 2 步)\n若不想繼續移動，請「再次點擊自己'確認完成`;
+            else if (phase === 'movement') instructionDisplay.innerText = selectedPieceIndex === -1 ? "請選擇你的棋子，或使用破牆者" : `請點擊高亮木紋格移動 (已走 ${stepsTaken} / 2 步)\n若不想繼續移動，請「再次點擊自己」確認完成`;
             else if (phase === 'wall_building') instructionDisplay.innerText = "請在剛移動的棋子四周放置一道牆";
             else if (phase === 'wall_breaking') instructionDisplay.innerText = "請選擇場上一道【你建立的牆壁】將其拆除";
 
@@ -1161,14 +1207,8 @@
         function getEl(r, c) { return document.querySelector(`[data-r="${r}"][data-c="${c}"]`); }
         function getPieceIndexAt(r, c) { return pieces.findIndex(p => p.r === r && p.c === c); }
 
-        window.resetGame = resetGame;
-        window.backToMenu = backToMenu;
-        window.toggleWallBreaker = toggleWallBreaker;
-        window.toggleChat = toggleChat;
-        window.sendChat = sendChat;
-        window.sendQuickMsg = sendQuickMsg;
-
-        resetGame();
+        // 初始化時，傳入 false 避免覆蓋連線進度
+        resetGame(false);
     </script>
 </body>
 </html>
