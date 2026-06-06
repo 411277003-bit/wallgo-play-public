@@ -740,8 +740,7 @@
                         executeAILogic(currentColor);
                     }
                 } 
-                // 💡 斷線救援機制：如果倒數到了 -3，代表該玩家可能跳轉頁面或斷線了
-                // 由「下一順位」的玩家來幫他接管 AI 並廣播，強制推動遊戲
+
                 else if (playerTimes[currentColor] === -3 && mode === 'online') {
                     let nextPlayerIndex = (turnIndex + 1) % (phase === 'placement' ? placementQueue.length : movementOrder.length);
                     let nextPlayer = phase === 'placement' ? placementQueue[nextPlayerIndex] : movementOrder[nextPlayerIndex];
