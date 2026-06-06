@@ -139,7 +139,6 @@
 
         .right-spacer { width: 240px; flex-shrink: 0; }
 
-        /* 💡 新增：漂浮的麥克風按鈕樣式 */
         .float-mic-btn {
             position: fixed;
             left: 30px;
@@ -150,7 +149,7 @@
             width: 54px;
             height: 54px;
             font-size: 26px;
-            display: none; /* 預設隱藏，連線模式再顯示 */
+            display: none; 
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 15px rgba(140, 115, 90, 0.3);
@@ -165,7 +164,7 @@
             background-color: var(--btn-beige);
         }
         .float-mic-btn.mic-active {
-            background-color: var(--color-green); /* 開啟時變成綠色 */
+            background-color: var(--color-green); 
             color: white;
             border-color: #ffffff;
             box-shadow: 0 0 15px rgba(72, 166, 102, 0.6);
@@ -351,7 +350,6 @@
             font-weight: bold;
         }
 
-        /* 響應式 */
         @media (max-width: 900px) {
             body { flex-direction: column; padding: 10px; gap: 15px; overflow-y: auto; overflow-x: hidden; height: auto; justify-content: flex-start; }
             .left-sidebar { width: 100%; max-width: 600px; height: auto; }
@@ -385,7 +383,7 @@
         </div>
 
         <div class="controls">
-            <button id="btn-breaker" onclick="toggleWallBreaker()">使用破牆者</button>
+            <button id="btn-breaker" onclick="toggleWallBreaker()">使用破牆</button>
             <button id="btn-reset" onclick="resetGame(true)">重新開始</button>
             <button class="btn-back" onclick="backToMenu()">回主選單</button>
         </div>
@@ -416,14 +414,14 @@
         </div>
         
         <div class="chat-quick-btns">
-            <button class="quick-btn" onclick="sendQuickMsg('👋 你好！')">👋 你好</button>
-            <button class="quick-btn" onclick="sendQuickMsg('😎 這局穩了！')">😎 這局穩了</button>
-            <button class="quick-btn" onclick="sendQuickMsg('😱 阿幹按錯！')">😱 阿幹按錯</button>
-            <button class="quick-btn" onclick="sendQuickMsg('🐮 牛喔放這裡！')">🐮 牛喔</button>
-            <button class="quick-btn" onclick="sendQuickMsg('🤔 讓我想想...')">🤔 思考</button>
-            <button class="quick-btn" onclick="sendQuickMsg('🔥 太神啦！')">🔥 太神</button>
-            <button class="quick-btn" onclick="sendQuickMsg('⏱️ 快點下棋啦！')">⏱️ 快點</button>
-            <button class="quick-btn" onclick="sendQuickMsg('😭 完蛋了...')">😭 完蛋</button>
+            <button class="quick-btn" onclick="sendQuickMsg('👋 你好！')">👋</button>
+            <button class="quick-btn" onclick="sendQuickMsg('😎 這局穩了！')">😎</button>
+            <button class="quick-btn" onclick="sendQuickMsg('😱 阿幹按錯！')">😱</button>
+            <button class="quick-btn" onclick="sendQuickMsg('🐮 牛喔放這裡！')">🐮</button>
+            <button class="quick-btn" onclick="sendQuickMsg('🤔 讓我想想...')">🤔</button>
+            <button class="quick-btn" onclick="sendQuickMsg('🔥 太神啦！')">🔥</button>
+            <button class="quick-btn" onclick="sendQuickMsg('⏱️ 快點下棋啦！')">⏱️</button>
+            <button class="quick-btn" onclick="sendQuickMsg('😭 完蛋了...')">😭</button>
         </div>
 
         <div class="chat-input-box">
@@ -506,7 +504,6 @@
                 if (data.room_players) colorToName = data.room_players;
                 updateUI();
                 
-                // 💡 在線上模式時，顯示左下角的小麥克風按鈕
                 document.getElementById('float-mic-btn').style.display = 'flex';
 
                 if (myOnlineColor !== 'red') {
@@ -690,8 +687,8 @@
             
             if (mode === 'online' && isManual) {
                 broadcastGameState();
-                appendChatMessage('系統', 'yellow', '🔄 房間已重新開始新的一局！');
-                socket.emit('send_chat', { room_code: roomCode, user_name: '系統', color: 'yellow', message: '🔄 房間已重新開始新的一局！' });
+                appendChatMessage('系統', 'yellow', '🔄 已重新開始新的一局！');
+                socket.emit('send_chat', { room_code: roomCode, user_name: '系統', color: 'yellow', message: '🔄 已重新開始新的一局！' });
             }
         }
 
@@ -1249,7 +1246,7 @@
             
             if (!isMicOn) {
                 try {
-                    // 💡 防呆檢查：如果使用者直接雙擊打開本地 html 檔案 (file://)
+                    // 防呆檢查：如果使用者直接雙擊打開本地 html 檔案 (file://)
                     // 瀏覽器會強制封鎖麥克風權限，必須使用 localhost 或 https
                     if (window.location.protocol === 'file:') {
                         alert("⚠️ 瀏覽器安全限制：\n麥克風功能無法在直接點開的本地檔案 (file://) 中使用。\n\n請使用 VS Code 的 Live Server 啟動，或是將遊戲上傳至 https 網域才能正常收音！");
@@ -1259,7 +1256,6 @@
                     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                     isMicOn = true;
                     
-                    // 改變按鈕為「開啟狀態」的外觀
                     btn.classList.add('mic-active');
                     btn.innerText = "🎙️";
 
