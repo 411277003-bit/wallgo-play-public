@@ -1006,15 +1006,15 @@
                 if (turnIndex >= placementQueue.length) { phase = 'movement'; turnIndex = 0; }
                 resetCurrentPlayerTimer(); 
                 actionMade = true;
-            } else if (phase === 'movement') {
+            } else if (phase === 'movement') {      //移動階段分為四步驟
                 const clickedPieceIndex = getPieceIndexAt(r, c);
 
                 if (selectedPieceIndex === -1) {
                     if (clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor) {
-                        selectedPieceIndex = clickedPieceIndex; stepsTaken = 0; actionMade = true;
+                        selectedPieceIndex = clickedPieceIndex; stepsTaken = 0; actionMade = true;   //選好了
                     }
                 } else {
-                    if (stepsTaken === 0 && clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor && clickedPieceIndex !== selectedPieceIndex) {
+                    if (stepsTaken === 0 && clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor && clickedPieceIndex !== selectedPieceIndex) {  //有四種條件
                         selectedPieceIndex = clickedPieceIndex; actionMade = true;
                     } else {
                         const p = pieces[selectedPieceIndex];
