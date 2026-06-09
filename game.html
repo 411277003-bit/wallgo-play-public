@@ -467,7 +467,7 @@
         let selectedPieceIndex = -1; 
         let movedPieceIndex = -1; 
 
-        // ★ 新增：用於記錄覆盤的歷史陣列
+        // 💡 覆盤用變數
         let moveHistory = []; 
 
         let colorToName = {};
@@ -496,7 +496,7 @@
             }
         }
 
-        // ★ 新增：儲存當下棋盤狀態的函數
+        // 💡 新增儲存狀態函數
         function saveHistoryStep() {
             moveHistory.push({
                 pieces: JSON.parse(JSON.stringify(pieces)),
@@ -534,7 +534,7 @@
                 playersInfo = data.playersInfo;
                 playerTimes = data.playerTimes;
                 
-                saveHistoryStep(); // ★ 連線同步時也記錄狀態
+                saveHistoryStep(); // 連線更新也記錄
                 render();
                 autoCheckEndGame(false); 
             });
@@ -693,9 +693,9 @@
             isProcessing = false;
             initBoard();
 
-            // ★ 新增：重置遊戲時記錄第 0 步
-            moveHistory = []; 
-            saveHistoryStep(); 
+            // 💡 遊戲重置時記錄第 0 步
+            moveHistory = [];
+            saveHistoryStep();
 
             startClock(); 
             checkAITurn(); 
@@ -756,6 +756,7 @@
                         executeAILogic(currentColor);
                     }
                 } 
+
                 else if (playerTimes[currentColor] === -3 && mode === 'online') {
                     let nextPlayerIndex = (turnIndex + 1) % (phase === 'placement' ? placementQueue.length : movementOrder.length);
                     let nextPlayer = phase === 'placement' ? placementQueue[nextPlayerIndex] : movementOrder[nextPlayerIndex];
@@ -859,7 +860,7 @@
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             }
 
-            saveHistoryStep(); // ★ 記錄 AI 執行後的狀態
+            saveHistoryStep(); // 💡 AI 行動後記錄
             resetCurrentPlayerTimer(); 
             autoCheckEndGame(false); 
             render();
@@ -1054,7 +1055,7 @@
             }
 
             if (actionMade) {
-                saveHistoryStep(); // ★ 玩家操作後記錄狀態
+                saveHistoryStep(); // 💡 玩家操作後記錄
                 render();
                 broadcastGameState(); 
                 if (mode !== 'online') checkAITurn(); 
@@ -1091,7 +1092,7 @@
             }
 
             if (actionMade) {
-                saveHistoryStep(); // ★ 玩家操作後記錄狀態
+                saveHistoryStep(); // 💡 玩家操作後記錄
                 render();
                 broadcastGameState(); 
             }
@@ -1116,7 +1117,7 @@
             movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
             turnIndex = (turnIndex + 1) % movementOrder.length;
             resetCurrentPlayerTimer(); 
-            saveHistoryStep(); // ★ 回合結束時記錄狀態
+            saveHistoryStep(); // 💡 回合結束後記錄
             autoCheckEndGame(false); 
             render();
             broadcastGameState(); 
@@ -1241,8 +1242,17 @@
                     winner: winners.join(' & '), 
                     winScore: maxScore,
                     details: detailParts.join(' | '),
-                    replayData: JSON.stringify(moveHistory) // ★ 結算時將覆盤紀錄寫入
+                    replayData: JSON.stringify(moveHistory) // 仍傳送給後端 (以防後端之後有更新)
                 };
+
+                // 💡 【核心修改】：將覆盤資料備份到 LocalStorage (利用時間 date 當作唯一識別碼)
+                try {
+                    let localReplays = JSON.parse(localStorage.getItem('wallGoReplays') || '{}');
+                    localReplays[historyRecord.date] = historyRecord.replayData;
+                    localStorage.setItem('wallGoReplays', JSON.stringify(localReplays));
+                } catch (e) {
+                    console.error("本地儲存空間不足", e);
+                }
                 
                 if (session) {
                     historyRecord.user_id = session.id;
