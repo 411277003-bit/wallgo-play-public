@@ -467,6 +467,9 @@
         let selectedPieceIndex = -1; 
         let movedPieceIndex = -1; 
 
+        // ★ 新增：用於記錄覆盤的歷史陣列
+        let moveHistory = []; 
+
         let colorToName = {};
 
         const boardEl = document.getElementById('game-board');
@@ -491,6 +494,14 @@
                 colorToName['yellow'] = '玩家3';
                 colorToName['green'] = '玩家4';
             }
+        }
+
+        // ★ 新增：儲存當下棋盤狀態的函數
+        function saveHistoryStep() {
+            moveHistory.push({
+                pieces: JSON.parse(JSON.stringify(pieces)),
+                walls: Array.from(walls.entries())
+            });
         }
 
         if (mode === 'online') {
@@ -523,6 +534,7 @@
                 playersInfo = data.playersInfo;
                 playerTimes = data.playerTimes;
                 
+                saveHistoryStep(); // ★ 連線同步時也記錄狀態
                 render();
                 autoCheckEndGame(false); 
             });
@@ -680,6 +692,11 @@
             phase = 'placement'; turnIndex = 0; selectedPieceIndex = -1; movedPieceIndex = -1; stepsTaken = 0; 
             isProcessing = false;
             initBoard();
+
+            // ★ 新增：重置遊戲時記錄第 0 步
+            moveHistory = []; 
+            saveHistoryStep(); 
+
             startClock(); 
             checkAITurn(); 
             
@@ -724,7 +741,6 @@
                 playerTimes[currentColor]--;
                 updateUI();
 
-                // 💡 倒數到 0 時，自己接管自己的 AI
                 if (playerTimes[currentColor] === 0) {
                     let baseName = getDisplayName(currentColor);
                     let suffix = (mode === 'online' && currentColor === myOnlineColor) || (!mode && currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
@@ -740,7 +756,6 @@
                         executeAILogic(currentColor);
                     }
                 } 
-
                 else if (playerTimes[currentColor] === -3 && mode === 'online') {
                     let nextPlayerIndex = (turnIndex + 1) % (phase === 'placement' ? placementQueue.length : movementOrder.length);
                     let nextPlayer = phase === 'placement' ? placementQueue[nextPlayerIndex] : movementOrder[nextPlayerIndex];
@@ -844,6 +859,7 @@
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             }
 
+            saveHistoryStep(); // ★ 記錄 AI 執行後的狀態
             resetCurrentPlayerTimer(); 
             autoCheckEndGame(false); 
             render();
@@ -1006,15 +1022,15 @@
                 if (turnIndex >= placementQueue.length) { phase = 'movement'; turnIndex = 0; }
                 resetCurrentPlayerTimer(); 
                 actionMade = true;
-            } else if (phase === 'movement') {      //移動階段分為四步驟
+            } else if (phase === 'movement') {
                 const clickedPieceIndex = getPieceIndexAt(r, c);
 
                 if (selectedPieceIndex === -1) {
                     if (clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor) {
-                        selectedPieceIndex = clickedPieceIndex; stepsTaken = 0; actionMade = true;   //選好了
+                        selectedPieceIndex = clickedPieceIndex; stepsTaken = 0; actionMade = true;
                     }
                 } else {
-                    if (stepsTaken === 0 && clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor && clickedPieceIndex !== selectedPieceIndex) {  //有四種條件
+                    if (stepsTaken === 0 && clickedPieceIndex !== -1 && pieces[clickedPieceIndex].color === currentColor && clickedPieceIndex !== selectedPieceIndex) {
                         selectedPieceIndex = clickedPieceIndex; actionMade = true;
                     } else {
                         const p = pieces[selectedPieceIndex];
@@ -1038,6 +1054,7 @@
             }
 
             if (actionMade) {
+                saveHistoryStep(); // ★ 玩家操作後記錄狀態
                 render();
                 broadcastGameState(); 
                 if (mode !== 'online') checkAITurn(); 
@@ -1074,6 +1091,7 @@
             }
 
             if (actionMade) {
+                saveHistoryStep(); // ★ 玩家操作後記錄狀態
                 render();
                 broadcastGameState(); 
             }
@@ -1098,6 +1116,7 @@
             movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
             turnIndex = (turnIndex + 1) % movementOrder.length;
             resetCurrentPlayerTimer(); 
+            saveHistoryStep(); // ★ 回合結束時記錄狀態
             autoCheckEndGame(false); 
             render();
             broadcastGameState(); 
@@ -1221,7 +1240,8 @@
                     date: new Date().toLocaleString('zh-TW'),
                     winner: winners.join(' & '), 
                     winScore: maxScore,
-                    details: detailParts.join(' | ')
+                    details: detailParts.join(' | '),
+                    replayData: JSON.stringify(moveHistory) // ★ 結算時將覆盤紀錄寫入
                 };
                 
                 if (session) {
