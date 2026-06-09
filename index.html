@@ -232,7 +232,7 @@
             .menu-title { font-size: 45px; }
         }
 
-        /* 覆盤專用棋盤 CSS - 修正了比例壓縮問題 */
+        /* 💡 修正比例壓縮問題的 CSS */
         .board { background-color: #e0d5c1; padding: 12px; border-radius: 16px; display: grid; grid-template-columns: repeat(6, 1fr 0.25fr) 1fr; grid-template-rows: repeat(6, 1fr 0.25fr) 1fr; box-shadow: inset 0 5px 15px rgba(0,0,0,0.05); box-sizing: border-box; }
         .grid-item { display: flex; justify-content: center; align-items: center; }
         .cell { background-color: #fdfdfc; border-radius: 8px; }
@@ -249,7 +249,7 @@
         .wall-yellow { background-color: var(--color-yellow) !important; box-shadow: 0 2px 4px rgba(220, 163, 38, 0.4); }
         .wall-green { background-color: var(--color-green) !important; box-shadow: 0 2px 4px rgba(72, 166, 102, 0.4); }
 
-        /* 💡 新增：破牆動態標記的 CSS */
+        /* 💡 破牆動態打叉標記的 CSS */
         .wall-broken-highlight {
             background-color: rgba(220, 53, 69, 0.8) !important;
             box-shadow: 0 0 10px rgba(220, 53, 69, 0.8);
@@ -327,7 +327,7 @@
     <div class="page-container" id="main-container">
         <div class="center-section">
             <h1 class="menu-title">WALL GO</h1>
-            <p class="menu-subtitle">快找朋友一起下棋吧</p>
+            <p class="menu-subtitle">原木質感對決享受</p>
             
             <div class="glass-card">
                 <h3>選擇遊玩人數</h3>
@@ -389,8 +389,8 @@
             <div id="tab-info" class="tab-pane">
                 <h3 style="text-align: center; margin-top: 0; font-family: var(--font-serif); font-size: 20px;">系統資訊</h3>
                 <div style="margin-bottom: 25px; border-bottom: 1px solid var(--card-border);"></div>
-                <div class="info-row"><span class="info-label">遊戲名稱</span><span class="info-value">Wall Go(源自魔鬼的計謀)</span></div>
-                <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v11(增加了覆盤功能)</span></div>
+                <div class="info-row"><span class="info-label">遊戲名稱</span><span class="info-value">Wall Go 木質版</span></div>
+                <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v11.0 完美通知版</span></div>
                 <p style="font-size: 13px; color: var(--primary); text-align: center; margin-top: 30px; font-weight: 500;">
                     已成功連接至雲端資料庫
                 </p>
@@ -404,7 +404,7 @@
         <div class="modal-content" style="max-width: 500px; text-align: center; padding: 25px 35px;">
             <h2 style="margin-top: 0;">棋盤覆盤</h2>
             
-            <div id="replay-board" class="board" style="width: 100%; max-width: min(100%, 50vh); aspect-ratio: 1/1; height: auto; margin: 0 auto 20px auto;"></div>
+            <div id="replay-board" class="board" style="width: 100%; max-width: min(100%, 45vh); aspect-ratio: 1/1; height: auto; margin: 0 auto 20px auto;"></div>
             
             <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; align-items: center;">
                 <button class="btn-cancel-modal" onclick="changeReplayStep(-1)" id="btn-prev-step" style="flex: 1; padding: 12px; margin: 0;">上一步</button>
@@ -582,6 +582,7 @@
             }
         }
 
+        // 💡 修正跳轉：確保連到 game.html
         socket.on('game_started', (data) => {
             window.location.href = `game.html?mode=online&room=${data.room_code}&players=${data.player_count}`;
         });
@@ -652,6 +653,7 @@
             } catch (error) { alert("無法連線到伺服器，請確認後端已成功啟動！"); }
         }
 
+        // 💡 修正資料來源：完全依靠後端資料庫
         async function loadHistory() {
             const listEl = document.getElementById('history-list');
             const totalGamesEl = document.getElementById('total-games');
@@ -669,11 +671,6 @@
                     globalHistoryData = history; 
                     let wins = 0;
 
-                    let localReplays = {};
-                    try {
-                        localReplays = JSON.parse(localStorage.getItem('wallGoReplays') || '{}');
-                    } catch(e) {}
-
                     if (history.length === 0) {
                         if (totalGamesEl) totalGamesEl.innerText = `0 場`;
                         if (winRateEl) winRateEl.innerText = `0%`;
@@ -686,13 +683,6 @@
                     history.slice().reverse().forEach((record, revIdx) => {
                         let originalIndex = history.length - 1 - revIdx;
                         if (record.winner.includes('(你)')) wins++;
-
-                        let recordKey = record.winScore + "_" + (record.details || "").replace(/\s+/g, '');
-
-                        if (!record.replayData && localReplays[recordKey]) {
-                            record.replayData = localReplays[recordKey];
-                            globalHistoryData[originalIndex].replayData = localReplays[recordKey];
-                        }
 
                         let hasReplay = !!record.replayData;
                         let replayBtnHtml = hasReplay 
@@ -729,14 +719,13 @@
                         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.id })
                     });
                     
-                    localStorage.removeItem('wallGoReplays');
                     loadHistory(); 
                 } catch (error) { alert("清除失敗，請檢查連線！"); }
             }
         }
 
         // ==========================================
-        // 💡 覆盤播放器邏輯 (加入動態破牆比對)
+        // 💡 覆盤播放器 (加入動態破牆比對功能)
         // ==========================================
         let currentReplayData = [];
         let currentStepIndex = 0;
@@ -748,7 +737,13 @@
                 return alert("這局遊戲沒有紀錄到覆盤資料！");
             }
             
-            currentReplayData = JSON.parse(record.replayData);
+            // 嘗試解析後端的資料字串
+            try {
+                currentReplayData = typeof record.replayData === 'string' ? JSON.parse(record.replayData) : record.replayData;
+            } catch (e) {
+                return alert("覆盤資料解析失敗，格式錯誤！");
+            }
+            
             currentStepIndex = currentReplayData.length - 1; 
             
             openModal('replay-modal');
@@ -792,13 +787,11 @@
             const boardEl = document.getElementById('replay-board');
             const stepData = currentReplayData[currentStepIndex];
             
-            // 1. 清空盤面標記
             boardEl.querySelectorAll('.grid-item').forEach(el => {
                 el.innerHTML = '';
                 el.classList.remove('wall-placed', 'wall-red', 'wall-blue', 'wall-yellow', 'wall-green', 'wall-broken-highlight');
             });
 
-            // 2. 渲染現有牆壁
             stepData.walls.forEach(wall => {
                 const [wKey, color] = wall; 
                 const [wr, wc] = wKey.split(',').map(Number);
@@ -806,7 +799,7 @@
                 if (wEl) wEl.classList.add('wall-placed', `wall-${color}`);
             });
 
-            // 💡 3. 動態比對破牆：如果「上一步」有這道牆，但「這一步」不見了，就標記它為破牆 (打個叉)
+            // 💡 動態破牆標記：比對上一步的牆壁，這一步不見的牆就打上紅色叉叉
             if (currentStepIndex > 0) {
                 const prevWalls = new Map(currentReplayData[currentStepIndex - 1].walls);
                 const currWalls = new Map(stepData.walls);
@@ -819,7 +812,6 @@
                 });
             }
 
-            // 4. 渲染棋子
             stepData.pieces.forEach(p => {
                 const cell = boardEl.querySelector(`[data-r="${p.r}"][data-c="${p.c}"]`);
                 if (cell) {
@@ -829,7 +821,6 @@
                 }
             });
 
-            // 更新按鈕狀態
             document.getElementById('replay-step-display').innerText = `${currentStepIndex} / ${currentReplayData.length - 1}`;
             document.getElementById('btn-prev-step').disabled = (currentStepIndex === 0);
             document.getElementById('btn-next-step').disabled = (currentStepIndex === currentReplayData.length - 1);
@@ -984,7 +975,8 @@
             document.getElementById('display-avatar').innerText = currentUser.avatar;
         }
 
-        function saveProfile() {
+        // 💡 嘗試將更新資料傳送給後端
+        async function saveProfile() {
             const newName = document.getElementById('input-name').value.trim();
             const newAvatar = document.getElementById('input-avatar').value.trim();
             if (!newName) return alert("暱稱不能為空！");
@@ -995,6 +987,24 @@
             localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
             updateProfileUI();
             closeModal('profile-modal');
+
+            try {
+                const res = await fetch(`${API_URL}/api/update_profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: currentUser.id,
+                        username: currentUser.name,
+                        avatar: currentUser.avatar
+                    })
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    console.log("後端資料庫更新失敗");
+                }
+            } catch (e) {
+                console.log("無法連線至伺服器同步個人資料");
+            }
         }
 
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
@@ -1026,6 +1036,8 @@
                 if(opt.dataset.val == val) opt.classList.add('active');
             });
         }
+        
+        // 💡 修正跳轉：確保連到 game.html
         function startGame() { window.location.href = `game.html?players=${selectedPlayers}`; }
 
         window.onload = () => {
