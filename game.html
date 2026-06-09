@@ -467,7 +467,7 @@
         let selectedPieceIndex = -1; 
         let movedPieceIndex = -1; 
 
-        // 💡 覆盤用變數
+        // ★ 覆盤用變數
         let moveHistory = []; 
 
         let colorToName = {};
@@ -496,7 +496,7 @@
             }
         }
 
-        // 💡 新增儲存狀態函數
+        // ★ 儲存狀態函數
         function saveHistoryStep() {
             moveHistory.push({
                 pieces: JSON.parse(JSON.stringify(pieces)),
@@ -693,7 +693,7 @@
             isProcessing = false;
             initBoard();
 
-            // 💡 遊戲重置時記錄第 0 步
+            // ★ 遊戲重置時記錄第 0 步
             moveHistory = [];
             saveHistoryStep();
 
@@ -860,7 +860,7 @@
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             }
 
-            saveHistoryStep(); // 💡 AI 行動後記錄
+            saveHistoryStep(); // ★ AI 行動後記錄
             resetCurrentPlayerTimer(); 
             autoCheckEndGame(false); 
             render();
@@ -1055,7 +1055,7 @@
             }
 
             if (actionMade) {
-                saveHistoryStep(); // 💡 玩家操作後記錄
+                saveHistoryStep(); // ★ 玩家操作後記錄
                 render();
                 broadcastGameState(); 
                 if (mode !== 'online') checkAITurn(); 
@@ -1092,7 +1092,7 @@
             }
 
             if (actionMade) {
-                saveHistoryStep(); // 💡 玩家操作後記錄
+                saveHistoryStep(); // ★ 玩家操作後記錄
                 render();
                 broadcastGameState(); 
             }
@@ -1117,7 +1117,7 @@
             movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
             turnIndex = (turnIndex + 1) % movementOrder.length;
             resetCurrentPlayerTimer(); 
-            saveHistoryStep(); // 💡 回合結束後記錄
+            saveHistoryStep(); // ★ 回合結束後記錄
             autoCheckEndGame(false); 
             render();
             broadcastGameState(); 
@@ -1242,13 +1242,14 @@
                     winner: winners.join(' & '), 
                     winScore: maxScore,
                     details: detailParts.join(' | '),
-                    replayData: JSON.stringify(moveHistory) // 仍傳送給後端 (以防後端之後有更新)
+                    replayData: JSON.stringify(moveHistory) 
                 };
 
-                // 💡 【核心修改】：將覆盤資料備份到 LocalStorage (利用時間 date 當作唯一識別碼)
+                // ★ 【極度核心修正】：利用絕對不會被後端改變的資料（分數+細節）當作鑰匙
+                const uniqueKey = historyRecord.winScore + "_" + historyRecord.details.replace(/\s+/g, '');
                 try {
                     let localReplays = JSON.parse(localStorage.getItem('wallGoReplays') || '{}');
-                    localReplays[historyRecord.date] = historyRecord.replayData;
+                    localReplays[uniqueKey] = historyRecord.replayData;
                     localStorage.setItem('wallGoReplays', JSON.stringify(localReplays));
                 } catch (e) {
                     console.error("本地儲存空間不足", e);
