@@ -21,8 +21,8 @@
             --btn-brown-light: #9c8065;  
             --btn-brown-dark: #5c4530;   
             --btn-beige: #ebe4d8;        
-            
-            /* ★ 新增：為了能在歷史紀錄畫出棋盤與棋子所需的顏色定義 */
+
+            /* 覆盤需要用到的顏色 */
             --color-red: #d15645;
             --color-blue: #448ccb;
             --color-yellow: #dca326;
@@ -232,7 +232,7 @@
             .menu-title { font-size: 45px; }
         }
 
-        /* ★ 新增：為了在歷史覆盤視窗中顯示棋盤的 CSS */
+        /* 覆盤專用棋盤 CSS */
         .board { background-color: #e0d5c1; padding: 12px; border-radius: 16px; display: grid; grid-template-columns: repeat(6, 1fr 0.25fr) 1fr; grid-template-rows: repeat(6, 1fr 0.25fr) 1fr; box-shadow: inset 0 5px 15px rgba(0,0,0,0.05); box-sizing: border-box; }
         .grid-item { display: flex; justify-content: center; align-items: center; }
         .cell { background-color: #fdfdfc; border-radius: 8px; }
@@ -248,7 +248,6 @@
         .wall-blue { background-color: var(--color-blue) !important; box-shadow: 0 2px 4px rgba(68, 140, 203, 0.4); }
         .wall-yellow { background-color: var(--color-yellow) !important; box-shadow: 0 2px 4px rgba(220, 163, 38, 0.4); }
         .wall-green { background-color: var(--color-green) !important; box-shadow: 0 2px 4px rgba(72, 166, 102, 0.4); }
-
     </style>
 </head>
 <body>
@@ -484,7 +483,7 @@
         const socket = io(API_URL);
         let currentRoomCode = null;
 
-        // ★ 新增：用於暫存歷史資料，以供覆盤讀取
+        // 💡 暫存歷史資料 (含從 LocalStorage 撈出來的)
         let globalHistoryData = [];
 
         function toggleSidebar() {
@@ -637,7 +636,7 @@
             } catch (error) { alert("無法連線到伺服器，請確認後端已成功啟動！"); }
         }
 
-        // ★ 修改載入戰績邏輯：加入勝率計算與覆盤按鈕生成
+        // 💡 【核心修改】：從後端載入戰績後，若缺乏 replayData，去本機 localStorage 找來補
         async function loadHistory() {
             const listEl = document.getElementById('history-list');
             const totalGamesEl = document.getElementById('total-games');
@@ -652,8 +651,14 @@
                 const result = await response.json();
                 if (result.success) {
                     const history = result.history;
-                    globalHistoryData = history; // 儲存起來供覆盤讀取
+                    globalHistoryData = history; 
                     let wins = 0;
+
+                    // 💡 讀取本地端備份的覆盤紀錄
+                    let localReplays = {};
+                    try {
+                        localReplays = JSON.parse(localStorage.getItem('wallGoReplays') || '{}');
+                    } catch(e) {}
 
                     if (history.length === 0) {
                         if (totalGamesEl) totalGamesEl.innerText = `0 場`;
@@ -666,13 +671,14 @@
                     listEl.innerHTML = '';
                     history.slice().reverse().forEach((record, revIdx) => {
                         let originalIndex = history.length - 1 - revIdx;
-                        
-                        // 計算勝場
-                        if (record.winner.includes('(你)')) {
-                            wins++;
+                        if (record.winner.includes('(你)')) wins++;
+
+                        // 💡 如果後端沒回傳覆盤，但本地有存，就補上去
+                        if (!record.replayData && localReplays[record.date]) {
+                            record.replayData = localReplays[record.date];
+                            globalHistoryData[originalIndex].replayData = localReplays[record.date];
                         }
 
-                        // 判斷該局有沒有存到覆盤資料
                         let hasReplay = !!record.replayData;
                         let replayBtnHtml = hasReplay 
                             ? `<button class="primary-btn" style="width: auto; padding: 6px 12px; font-size: 13px;" onclick="openReplay(${originalIndex})">查看覆盤</button>` 
@@ -693,7 +699,6 @@
                             </div>`;
                     });
 
-                    // 更新總勝率
                     let winRate = Math.round((wins / history.length) * 100);
                     if (totalGamesEl) totalGamesEl.innerText = `${history.length} 場`;
                     if (winRateEl) winRateEl.innerText = `${winRate}%`;
@@ -708,13 +713,17 @@
                     await fetch(`${API_URL}/api/clear_history`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.id })
                     });
+                    
+                    // 💡 清除歷史的同時，也一併清空本地端的覆盤資料，避免佔用空間
+                    localStorage.removeItem('wallGoReplays');
+
                     loadHistory(); 
                 } catch (error) { alert("清除失敗，請檢查連線！"); }
             }
         }
 
         // ==========================================
-        // ★ 新增：覆盤播放器邏輯
+        // 💡 覆盤播放器邏輯
         // ==========================================
         let currentReplayData = [];
         let currentStepIndex = 0;
@@ -727,7 +736,7 @@
             }
             
             currentReplayData = JSON.parse(record.replayData);
-            currentStepIndex = currentReplayData.length - 1; // 預設顯示最終盤面
+            currentStepIndex = currentReplayData.length - 1; 
             
             openModal('replay-modal');
             initReplayBoard();
@@ -770,21 +779,18 @@
             const boardEl = document.getElementById('replay-board');
             const stepData = currentReplayData[currentStepIndex];
             
-            // 清空現有盤面標記
             boardEl.querySelectorAll('.grid-item').forEach(el => {
                 el.innerHTML = '';
                 el.classList.remove('wall-placed', 'wall-red', 'wall-blue', 'wall-yellow', 'wall-green');
             });
 
-            // 渲染牆壁
             stepData.walls.forEach(wall => {
-                const [wKey, color] = wall; // ['r,c', 'color']
+                const [wKey, color] = wall; 
                 const [wr, wc] = wKey.split(',').map(Number);
                 const wEl = boardEl.querySelector(`[data-r="${wr}"][data-c="${wc}"]`);
                 if (wEl) wEl.classList.add('wall-placed', `wall-${color}`);
             });
 
-            // 渲染棋子
             stepData.pieces.forEach(p => {
                 const cell = boardEl.querySelector(`[data-r="${p.r}"][data-c="${p.c}"]`);
                 if (cell) {
@@ -794,7 +800,6 @@
                 }
             });
 
-            // 更新進度顯示與按鈕狀態
             document.getElementById('replay-step-display').innerText = `${currentStepIndex} / ${currentReplayData.length - 1}`;
             document.getElementById('btn-prev-step').disabled = (currentStepIndex === 0);
             document.getElementById('btn-next-step').disabled = (currentStepIndex === currentReplayData.length - 1);
