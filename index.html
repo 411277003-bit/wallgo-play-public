@@ -232,7 +232,7 @@
             .menu-title { font-size: 45px; }
         }
 
-        /* 覆盤專用棋盤 CSS */
+        /* 覆盤專用棋盤 CSS - 修正了比例壓縮問題 */
         .board { background-color: #e0d5c1; padding: 12px; border-radius: 16px; display: grid; grid-template-columns: repeat(6, 1fr 0.25fr) 1fr; grid-template-rows: repeat(6, 1fr 0.25fr) 1fr; box-shadow: inset 0 5px 15px rgba(0,0,0,0.05); box-sizing: border-box; }
         .grid-item { display: flex; justify-content: center; align-items: center; }
         .cell { background-color: #fdfdfc; border-radius: 8px; }
@@ -248,6 +248,22 @@
         .wall-blue { background-color: var(--color-blue) !important; box-shadow: 0 2px 4px rgba(68, 140, 203, 0.4); }
         .wall-yellow { background-color: var(--color-yellow) !important; box-shadow: 0 2px 4px rgba(220, 163, 38, 0.4); }
         .wall-green { background-color: var(--color-green) !important; box-shadow: 0 2px 4px rgba(72, 166, 102, 0.4); }
+
+        /* 💡 新增：破牆動態標記的 CSS */
+        .wall-broken-highlight {
+            background-color: rgba(220, 53, 69, 0.8) !important;
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.8);
+            position: relative;
+        }
+        .wall-broken-highlight::after {
+            content: "✖";
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -387,7 +403,8 @@
     <div id="replay-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px; text-align: center; padding: 25px 35px;">
             <h2 style="margin-top: 0;">棋盤覆盤</h2>
-            <div id="replay-board" class="board" style="width: 100%; aspect-ratio: 1/1; height: auto; margin: 0 auto 20px auto; max-height: 50vh;"></div>
+            
+            <div id="replay-board" class="board" style="width: 100%; max-width: min(100%, 50vh); aspect-ratio: 1/1; height: auto; margin: 0 auto 20px auto;"></div>
             
             <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; align-items: center;">
                 <button class="btn-cancel-modal" onclick="changeReplayStep(-1)" id="btn-prev-step" style="flex: 1; padding: 12px; margin: 0;">上一步</button>
@@ -483,7 +500,6 @@
         const socket = io(API_URL);
         let currentRoomCode = null;
 
-        // 💡 暫存歷史資料 (含從 LocalStorage 撈出來的)
         let globalHistoryData = [];
 
         function toggleSidebar() {
@@ -636,7 +652,6 @@
             } catch (error) { alert("無法連線到伺服器，請確認後端已成功啟動！"); }
         }
 
-        // ★ 【強力修正】：從後端載入戰績後，利用分數與細節配對本地端的覆盤
         async function loadHistory() {
             const listEl = document.getElementById('history-list');
             const totalGamesEl = document.getElementById('total-games');
@@ -654,7 +669,6 @@
                     globalHistoryData = history; 
                     let wins = 0;
 
-                    // 💡 讀取本地端備份的覆盤紀錄
                     let localReplays = {};
                     try {
                         localReplays = JSON.parse(localStorage.getItem('wallGoReplays') || '{}');
@@ -673,10 +687,8 @@
                         let originalIndex = history.length - 1 - revIdx;
                         if (record.winner.includes('(你)')) wins++;
 
-                        // ★ 建立獨一無二的配對鑰匙：這局的分數 + 這局的詳細資訊 (過濾掉空白以防萬一)
                         let recordKey = record.winScore + "_" + (record.details || "").replace(/\s+/g, '');
 
-                        // 💡 如果後端沒回傳覆盤，但本地有用這把鑰匙存著，就補上去！
                         if (!record.replayData && localReplays[recordKey]) {
                             record.replayData = localReplays[recordKey];
                             globalHistoryData[originalIndex].replayData = localReplays[recordKey];
@@ -717,16 +729,14 @@
                         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.id })
                     });
                     
-                    // 💡 清除歷史的同時，也一併清空本地端的覆盤資料
                     localStorage.removeItem('wallGoReplays');
-
                     loadHistory(); 
                 } catch (error) { alert("清除失敗，請檢查連線！"); }
             }
         }
 
         // ==========================================
-        // 💡 覆盤播放器邏輯
+        // 💡 覆盤播放器邏輯 (加入動態破牆比對)
         // ==========================================
         let currentReplayData = [];
         let currentStepIndex = 0;
@@ -782,11 +792,13 @@
             const boardEl = document.getElementById('replay-board');
             const stepData = currentReplayData[currentStepIndex];
             
+            // 1. 清空盤面標記
             boardEl.querySelectorAll('.grid-item').forEach(el => {
                 el.innerHTML = '';
-                el.classList.remove('wall-placed', 'wall-red', 'wall-blue', 'wall-yellow', 'wall-green');
+                el.classList.remove('wall-placed', 'wall-red', 'wall-blue', 'wall-yellow', 'wall-green', 'wall-broken-highlight');
             });
 
+            // 2. 渲染現有牆壁
             stepData.walls.forEach(wall => {
                 const [wKey, color] = wall; 
                 const [wr, wc] = wKey.split(',').map(Number);
@@ -794,6 +806,20 @@
                 if (wEl) wEl.classList.add('wall-placed', `wall-${color}`);
             });
 
+            // 💡 3. 動態比對破牆：如果「上一步」有這道牆，但「這一步」不見了，就標記它為破牆 (打個叉)
+            if (currentStepIndex > 0) {
+                const prevWalls = new Map(currentReplayData[currentStepIndex - 1].walls);
+                const currWalls = new Map(stepData.walls);
+                prevWalls.forEach((color, key) => {
+                    if (!currWalls.has(key)) {
+                        const [wr, wc] = key.split(',').map(Number);
+                        const wEl = boardEl.querySelector(`[data-r="${wr}"][data-c="${wc}"]`);
+                        if (wEl) wEl.classList.add('wall-broken-highlight');
+                    }
+                });
+            }
+
+            // 4. 渲染棋子
             stepData.pieces.forEach(p => {
                 const cell = boardEl.querySelector(`[data-r="${p.r}"][data-c="${p.c}"]`);
                 if (cell) {
@@ -803,6 +829,7 @@
                 }
             });
 
+            // 更新按鈕狀態
             document.getElementById('replay-step-display').innerText = `${currentStepIndex} / ${currentReplayData.length - 1}`;
             document.getElementById('btn-prev-step').disabled = (currentStepIndex === 0);
             document.getElementById('btn-next-step').disabled = (currentStepIndex === currentReplayData.length - 1);
