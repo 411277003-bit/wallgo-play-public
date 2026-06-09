@@ -636,7 +636,7 @@
             } catch (error) { alert("無法連線到伺服器，請確認後端已成功啟動！"); }
         }
 
-        // 💡 【核心修改】：從後端載入戰績後，若缺乏 replayData，去本機 localStorage 找來補
+        // ★ 【強力修正】：從後端載入戰績後，利用分數與細節配對本地端的覆盤
         async function loadHistory() {
             const listEl = document.getElementById('history-list');
             const totalGamesEl = document.getElementById('total-games');
@@ -673,10 +673,13 @@
                         let originalIndex = history.length - 1 - revIdx;
                         if (record.winner.includes('(你)')) wins++;
 
-                        // 💡 如果後端沒回傳覆盤，但本地有存，就補上去
-                        if (!record.replayData && localReplays[record.date]) {
-                            record.replayData = localReplays[record.date];
-                            globalHistoryData[originalIndex].replayData = localReplays[record.date];
+                        // ★ 建立獨一無二的配對鑰匙：這局的分數 + 這局的詳細資訊 (過濾掉空白以防萬一)
+                        let recordKey = record.winScore + "_" + (record.details || "").replace(/\s+/g, '');
+
+                        // 💡 如果後端沒回傳覆盤，但本地有用這把鑰匙存著，就補上去！
+                        if (!record.replayData && localReplays[recordKey]) {
+                            record.replayData = localReplays[recordKey];
+                            globalHistoryData[originalIndex].replayData = localReplays[recordKey];
                         }
 
                         let hasReplay = !!record.replayData;
@@ -714,7 +717,7 @@
                         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.id })
                     });
                     
-                    // 💡 清除歷史的同時，也一併清空本地端的覆盤資料，避免佔用空間
+                    // 💡 清除歷史的同時，也一併清空本地端的覆盤資料
                     localStorage.removeItem('wallGoReplays');
 
                     loadHistory(); 
