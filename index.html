@@ -21,6 +21,12 @@
             --btn-brown-light: #9c8065;  
             --btn-brown-dark: #5c4530;   
             --btn-beige: #ebe4d8;        
+            
+            /* ★ 新增：為了能在歷史紀錄畫出棋盤與棋子所需的顏色定義 */
+            --color-red: #d15645;
+            --color-blue: #448ccb;
+            --color-yellow: #dca326;
+            --color-green: #48a666;
 
             --font-serif: 'Noto Serif TC', 'PMingLiU', 'Times New Roman', serif;
             --font-sans: 'Noto Sans TC', 'Microsoft JhengHei', Arial, sans-serif;
@@ -225,6 +231,24 @@
             .right-sidebar { width: 100vw; right: -100vw; }
             .menu-title { font-size: 45px; }
         }
+
+        /* ★ 新增：為了在歷史覆盤視窗中顯示棋盤的 CSS */
+        .board { background-color: #e0d5c1; padding: 12px; border-radius: 16px; display: grid; grid-template-columns: repeat(6, 1fr 0.25fr) 1fr; grid-template-rows: repeat(6, 1fr 0.25fr) 1fr; box-shadow: inset 0 5px 15px rgba(0,0,0,0.05); box-sizing: border-box; }
+        .grid-item { display: flex; justify-content: center; align-items: center; }
+        .cell { background-color: #fdfdfc; border-radius: 8px; }
+        .wall-h, .wall-v { border-radius: 4px; }
+        .intersection { background-color: transparent; }
+        .piece { border-radius: 50%; width: 75%; height: 75%; box-shadow: 0 4px 10px rgba(74, 54, 35, 0.25); }
+        .piece-red { background-color: var(--color-red); }
+        .piece-blue { background-color: var(--color-blue); }
+        .piece-yellow { background-color: var(--color-yellow); }
+        .piece-green { background-color: var(--color-green); }
+        .wall-placed { cursor: default; }
+        .wall-red { background-color: var(--color-red) !important; box-shadow: 0 2px 4px rgba(209, 86, 69, 0.4); }
+        .wall-blue { background-color: var(--color-blue) !important; box-shadow: 0 2px 4px rgba(68, 140, 203, 0.4); }
+        .wall-yellow { background-color: var(--color-yellow) !important; box-shadow: 0 2px 4px rgba(220, 163, 38, 0.4); }
+        .wall-green { background-color: var(--color-green) !important; box-shadow: 0 2px 4px rgba(72, 166, 102, 0.4); }
+
     </style>
 </head>
 <body>
@@ -266,7 +290,6 @@
         </div>
     </div>
 
-    <!-- 重設密碼 -->
     <div id="forgot-pwd-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <h2>重設密碼</h2>
@@ -289,7 +312,7 @@
     <div class="page-container" id="main-container">
         <div class="center-section">
             <h1 class="menu-title">WALL GO</h1>
-            <p class="menu-subtitle">快點找朋友一起上線下棋吧</p>
+            <p class="menu-subtitle">原木質感對決享受</p>
             
             <div class="glass-card">
                 <h3>選擇遊玩人數</h3>
@@ -309,7 +332,6 @@
         </div>
     </div>
 
-    <!-- 側邊滑出選單 -->
     <div class="right-sidebar" id="right-sidebar">
         <button class="close-sidebar-btn" onclick="toggleSidebar()">✖</button>
         
@@ -352,8 +374,8 @@
             <div id="tab-info" class="tab-pane">
                 <h3 style="text-align: center; margin-top: 0; font-family: var(--font-serif); font-size: 20px;">系統資訊</h3>
                 <div style="margin-bottom: 25px; border-bottom: 1px solid var(--card-border);"></div>
-                <div class="info-row"><span class="info-label">遊戲名稱</span><span class="info-value">Wall Go(發想自魔鬼的計謀2)</span></div>
-                <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v11.0 (更新了同步問題及自動問題)</span></div>
+                <div class="info-row"><span class="info-label">遊戲名稱</span><span class="info-value">Wall Go 木質版</span></div>
+                <div class="info-row"><span class="info-label">目前版本</span><span class="info-value">v11.0 完美通知版</span></div>
                 <p style="font-size: 13px; color: var(--primary); text-align: center; margin-top: 30px; font-weight: 500;">
                     已成功連接至雲端資料庫
                 </p>
@@ -362,7 +384,22 @@
 
         <button class="rules-btn" onclick="openModal('rules-modal')">📄 查看遊戲規則</button>
     </div>
-    
+
+    <div id="replay-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px; text-align: center; padding: 25px 35px;">
+            <h2 style="margin-top: 0;">棋盤覆盤</h2>
+            <div id="replay-board" class="board" style="width: 100%; aspect-ratio: 1/1; height: auto; margin: 0 auto 20px auto; max-height: 50vh;"></div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; align-items: center;">
+                <button class="btn-cancel-modal" onclick="changeReplayStep(-1)" id="btn-prev-step" style="flex: 1; padding: 12px; margin: 0;">上一步</button>
+                <span id="replay-step-display" style="font-weight: bold; min-width: 80px; font-size: 16px;">0 / 0</span>
+                <button class="start-btn" onclick="changeReplayStep(1)" id="btn-next-step" style="flex: 1; padding: 12px; background: var(--primary);">下一步</button>
+            </div>
+            
+            <button class="btn-cancel-modal" onclick="closeReplay()" style="background: var(--danger); color: white; width: 100%;">關閉覆盤</button>
+        </div>
+    </div>
+
     <div id="room-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px; text-align: center;">
             <div id="room-ui-main">
@@ -394,7 +431,6 @@
         </div>
     </div>
 
-    <!-- 好友介面 -->
     <div id="friends-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 480px;">
             <h2>我的好友</h2>
@@ -409,7 +445,6 @@
         </div>
     </div>
 
-    <!-- 個人資料介面 -->
     <div id="profile-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px;">
             <h2>編輯個人資料</h2>
@@ -426,7 +461,6 @@
         </div>
     </div>
 
-    <!-- 規則介面 -->
     <div id="rules-modal" class="modal-overlay">
         <div class="modal-content">
             <h2>遊戲規則</h2>
@@ -449,6 +483,9 @@
         const API_URL = 'https://wallgo-play.onrender.com';
         const socket = io(API_URL);
         let currentRoomCode = null;
+
+        // ★ 新增：用於暫存歷史資料，以供覆盤讀取
+        let globalHistoryData = [];
 
         function toggleSidebar() {
             const sidebar = document.getElementById('right-sidebar');
@@ -570,7 +607,7 @@
                 });
                 const result = await response.json();
                 if (result.success) {
-                    alert(`註冊成功！。\n\n你的專屬玩家 ID 是：${result.user.id}\n請務必牢記你的 ID 與密碼。`);
+                    alert(`註冊成功！寫入資料庫完畢。\n\n你的專屬玩家 ID 是：${result.user.id}\n請務必牢記你的 ID 與密碼。`);
                     currentUser = { ...result.user }; 
                     localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
                     document.getElementById('reg-name').value = "";
@@ -600,7 +637,7 @@
             } catch (error) { alert("無法連線到伺服器，請確認後端已成功啟動！"); }
         }
 
-        //勝率計算
+        // ★ 修改載入戰績邏輯：加入勝率計算與覆盤按鈕生成
         async function loadHistory() {
             const listEl = document.getElementById('history-list');
             const totalGamesEl = document.getElementById('total-games');
@@ -615,6 +652,7 @@
                 const result = await response.json();
                 if (result.success) {
                     const history = result.history;
+                    globalHistoryData = history; // 儲存起來供覆盤讀取
                     let wins = 0;
 
                     if (history.length === 0) {
@@ -626,15 +664,32 @@
                     }
                     
                     listEl.innerHTML = '';
-                    history.slice().reverse().forEach(record => {
+                    history.slice().reverse().forEach((record, revIdx) => {
+                        let originalIndex = history.length - 1 - revIdx;
+                        
+                        // 計算勝場
                         if (record.winner.includes('(你)')) {
                             wins++;
                         }
+
+                        // 判斷該局有沒有存到覆盤資料
+                        let hasReplay = !!record.replayData;
+                        let replayBtnHtml = hasReplay 
+                            ? `<button class="primary-btn" style="width: auto; padding: 6px 12px; font-size: 13px;" onclick="openReplay(${originalIndex})">查看覆盤</button>` 
+                            : `<span style="font-size: 12px; color: var(--text-sub);">無覆盤</span>`;
+
                         listEl.innerHTML += `
                             <div class="history-item">
-                                <div class="history-date">${record.date}</div>
-                                <div class="history-winner">${record.winner} <span style="font-size:12px; color:var(--text-sub);">(${record.winScore}格)</span></div>
-                                <div class="history-details">${record.details}</div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div class="history-date">${record.date}</div>
+                                        <div class="history-winner">${record.winner} <span style="font-size:12px; color:var(--text-sub);">(${record.winScore}格)</span></div>
+                                        <div class="history-details">${record.details}</div>
+                                    </div>
+                                    <div>
+                                        ${replayBtnHtml}
+                                    </div>
+                                </div>
                             </div>`;
                     });
 
@@ -657,6 +712,96 @@
                 } catch (error) { alert("清除失敗，請檢查連線！"); }
             }
         }
+
+        // ==========================================
+        // ★ 新增：覆盤播放器邏輯
+        // ==========================================
+        let currentReplayData = [];
+        let currentStepIndex = 0;
+        const replayBoardSize = 13;
+
+        function openReplay(historyIndex) {
+            let record = globalHistoryData[historyIndex];
+            if (!record || !record.replayData) {
+                return alert("這局遊戲沒有紀錄到覆盤資料！");
+            }
+            
+            currentReplayData = JSON.parse(record.replayData);
+            currentStepIndex = currentReplayData.length - 1; // 預設顯示最終盤面
+            
+            openModal('replay-modal');
+            initReplayBoard();
+            renderReplayStep();
+        }
+
+        function closeReplay() {
+            closeModal('replay-modal');
+            currentReplayData = [];
+        }
+
+        function initReplayBoard() {
+            const boardEl = document.getElementById('replay-board');
+            boardEl.innerHTML = '';
+            for (let r = 0; r < replayBoardSize; r++) {
+                for (let c = 0; c < replayBoardSize; c++) {
+                    const div = document.createElement('div');
+                    div.classList.add('grid-item'); 
+                    div.dataset.r = r; div.dataset.c = c;
+                    
+                    if (r % 2 === 0 && c % 2 === 0) div.classList.add('cell');
+                    else if (r % 2 !== 0 && c % 2 === 0) div.classList.add('wall-h');
+                    else if (r % 2 === 0 && c % 2 !== 0) div.classList.add('wall-v');
+                    else div.classList.add('intersection');
+                    
+                    boardEl.appendChild(div);
+                }
+            }
+        }
+
+        function changeReplayStep(delta) {
+            let newIndex = currentStepIndex + delta;
+            if (newIndex >= 0 && newIndex < currentReplayData.length) {
+                currentStepIndex = newIndex;
+                renderReplayStep();
+            }
+        }
+
+        function renderReplayStep() {
+            const boardEl = document.getElementById('replay-board');
+            const stepData = currentReplayData[currentStepIndex];
+            
+            // 清空現有盤面標記
+            boardEl.querySelectorAll('.grid-item').forEach(el => {
+                el.innerHTML = '';
+                el.classList.remove('wall-placed', 'wall-red', 'wall-blue', 'wall-yellow', 'wall-green');
+            });
+
+            // 渲染牆壁
+            stepData.walls.forEach(wall => {
+                const [wKey, color] = wall; // ['r,c', 'color']
+                const [wr, wc] = wKey.split(',').map(Number);
+                const wEl = boardEl.querySelector(`[data-r="${wr}"][data-c="${wc}"]`);
+                if (wEl) wEl.classList.add('wall-placed', `wall-${color}`);
+            });
+
+            // 渲染棋子
+            stepData.pieces.forEach(p => {
+                const cell = boardEl.querySelector(`[data-r="${p.r}"][data-c="${p.c}"]`);
+                if (cell) {
+                    const pieceDiv = document.createElement('div');
+                    pieceDiv.classList.add('piece', `piece-${p.color}`);
+                    cell.appendChild(pieceDiv);
+                }
+            });
+
+            // 更新進度顯示與按鈕狀態
+            document.getElementById('replay-step-display').innerText = `${currentStepIndex} / ${currentReplayData.length - 1}`;
+            document.getElementById('btn-prev-step').disabled = (currentStepIndex === 0);
+            document.getElementById('btn-next-step').disabled = (currentStepIndex === currentReplayData.length - 1);
+            document.getElementById('btn-prev-step').style.opacity = (currentStepIndex === 0) ? '0.5' : '1';
+            document.getElementById('btn-next-step').style.opacity = (currentStepIndex === currentReplayData.length - 1) ? '0.5' : '1';
+        }
+        // ==========================================
 
         async function openFriendList() { 
             openModal('friends-modal');
