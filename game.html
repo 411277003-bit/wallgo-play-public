@@ -495,6 +495,7 @@
             }
         }
 
+        // 儲存狀態函數，確保每一步都有被完整記錄
         function saveHistoryStep() {
             moveHistory.push({
                 pieces: JSON.parse(JSON.stringify(pieces)),
@@ -532,7 +533,7 @@
                 playersInfo = data.playersInfo;
                 playerTimes = data.playerTimes;
                 
-                saveHistoryStep();
+                saveHistoryStep(); 
                 render();
                 autoCheckEndGame(false); 
             });
@@ -857,7 +858,7 @@
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             }
 
-            saveHistoryStep();
+            saveHistoryStep(); 
             resetCurrentPlayerTimer(); 
             autoCheckEndGame(false); 
             render();
@@ -1052,7 +1053,7 @@
             }
 
             if (actionMade) {
-                saveHistoryStep();
+                saveHistoryStep(); 
                 render();
                 broadcastGameState(); 
                 if (mode !== 'online') checkAITurn(); 
@@ -1089,7 +1090,7 @@
             }
 
             if (actionMade) {
-                saveHistoryStep();
+                saveHistoryStep(); 
                 render();
                 broadcastGameState(); 
             }
@@ -1114,7 +1115,7 @@
             movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
             turnIndex = (turnIndex + 1) % movementOrder.length;
             resetCurrentPlayerTimer(); 
-            saveHistoryStep();
+            saveHistoryStep(); 
             autoCheckEndGame(false); 
             render();
             broadcastGameState(); 
@@ -1234,6 +1235,7 @@
                     return `${colorChar}${isMe ? '(你)' : ''}:${scores[c]}`;
                 });
 
+                // ★ 改回將覆盤資料綁定在傳送給後端的 API 中
                 const historyRecord = {
                     date: new Date().toLocaleString('zh-TW'),
                     winner: winners.join(' & '), 
@@ -1241,15 +1243,6 @@
                     details: detailParts.join(' | '),
                     replayData: JSON.stringify(moveHistory) 
                 };
-
-                const uniqueKey = historyRecord.winScore + "_" + historyRecord.details.replace(/\s+/g, '');
-                try {
-                    let localReplays = JSON.parse(localStorage.getItem('wallGoReplays') || '{}');
-                    localReplays[uniqueKey] = historyRecord.replayData;
-                    localStorage.setItem('wallGoReplays', JSON.stringify(localReplays));
-                } catch (e) {
-                    console.error("本地儲存空間不足", e);
-                }
                 
                 if (session) {
                     historyRecord.user_id = session.id;
