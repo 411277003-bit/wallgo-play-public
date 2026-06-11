@@ -383,6 +383,13 @@
         <div class="controls">
             <button id="btn-breaker" onclick="toggleWallBreaker()">使用破牆</button>
             <button id="btn-reset" onclick="resetGame(true)">重新開始</button>
+            
+            <div id="replay-controls" style="display: none; flex-direction: column; gap: 8px; width: 100%;">
+                <button onclick="prevReplayStep()" style="background-color: #9c8065; color: white;">⬅️ 上一步</button>
+                <button onclick="nextReplayStep()" style="background-color: #9c8065; color: white;">下一步 ➡️</button>
+                <button id="btn-auto-play" onclick="toggleAutoPlay()" style="background-color: var(--primary); color: white;">▶️ 自動播放</button>
+            </div>
+            
             <button class="btn-back" onclick="backToMenu()">回主選單</button>
         </div>
         
@@ -446,6 +453,12 @@
         let aiColor = isVsAI ? 'blue' : null;
         let isProcessing = false; 
 
+        // 💡 覆盤模式變數
+        const isReplayMode = (mode === 'replay');
+        let loadedReplayData = [];
+        let currentReplayStep = 0;
+        let autoPlayInterval = null;
+
         let socket = null;
         let myOnlineColor = null; 
         let session = JSON.parse(localStorage.getItem('wallGoSession'));
@@ -467,6 +480,8 @@
         let selectedPieceIndex = -1; 
         let movedPieceIndex = -1; 
 
+        let moveHistory = []; 
+
         let colorToName = {};
 
         const boardEl = document.getElementById('game-board');
@@ -483,7 +498,7 @@
             'green': { color: 'var(--color-green)', icon: '🟢', text: '綠色' }
         };
 
-        if (mode !== 'online') {
+        if (mode !== 'online' && !isReplayMode) {
             colorToName['red'] = session ? session.name : '玩家1';
             if (isVsAI) colorToName['blue'] = '電腦 AI';
             else {
@@ -493,50 +508,80 @@
             }
         }
 
-        if (mode === 'online') {
+        // 儲存狀態函數，確保每一步都有被完整記錄
+        function saveHistoryStep() {
+            moveHistory.push({
+                pieces: JSON.parse(JSON.stringify(pieces)),
+                walls: Array.from(walls.entries())
+            });
+        }
+
+        // 💡 覆盤模式專用渲染函數
+        function renderReplayStep() {
+            if (loadedReplayData.length === 0) return;
+            const step = loadedReplayData[currentReplayStep];
+            pieces = step.pieces || [];
+            walls = new Map(step.walls || []);
+            render();
+            updateUI();
+        }
+
+        function prevReplayStep() {
+            if (autoPlayInterval) toggleAutoPlay(); 
+            if (currentReplayStep > 0) {
+                currentReplayStep--;
+                renderReplayStep();
+            }
+        }
+
+        function nextReplayStep() {
+            if (autoPlayInterval) toggleAutoPlay(); 
+            if (currentReplayStep < loadedReplayData.length - 1) {
+                currentReplayStep++;
+                renderReplayStep();
+            }
+        }
+
+        function toggleAutoPlay() {
+            const btn = document.getElementById('btn-auto-play');
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+                btn.innerText = "▶️ 自動播放";
+            } else {
+                btn.innerText = "⏸️ 暫停播放";
+                autoPlayInterval = setInterval(() => {
+                    if (currentReplayStep < loadedReplayData.length - 1) {
+                        currentReplayStep++;
+                        renderReplayStep();
+                    } else {
+                        clearInterval(autoPlayInterval);
+                        autoPlayInterval = null;
+                        btn.innerText = "▶️ 自動播放";
+                    }
+                }, 1000);
+            }
+        }
+
+        if (mode === 'online' && !isReplayMode) {
             socket = io(API_URL);
             socket.emit('join_game_room', { room_code: roomCode, user_id: session.id });
 
             socket.on('init_game', (data) => {
                 myOnlineColor = data.my_color;
                 if (data.room_players) colorToName = data.room_players;
-                
-                // 💡 恢復斷線或重新整理前的盤面狀態
-                if (data.initial_state) {
-                    let s = data.initial_state;
-                    pieces = s.pieces || [];
-                    walls = new Map(s.walls || []);
-                    territories = new Map(s.territories || []);
-                    phase = s.phase || 'placement';
-                    turnIndex = s.turnIndex || 0;
-                    movedPieceIndex = s.movedPieceIndex !== undefined ? s.movedPieceIndex : -1;
-                    selectedPieceIndex = s.selectedPieceIndex !== undefined ? s.selectedPieceIndex : -1;
-                    stepsTaken = s.stepsTaken || 0;
-                    if (s.playersInfo) playersInfo = s.playersInfo;
-                    if (s.playerTimes) playerTimes = s.playerTimes;
-                    render();
-                }
-                
                 updateUI();
+                
                 document.getElementById('float-mic-btn').style.display = 'flex';
 
                 if (myOnlineColor !== 'red') {
                     setTimeout(() => {
-                        socket.emit('send_chat', { room_code: roomCode, user_name: '系統', color: 'yellow', message: '🔄 新玩家加入，狀態已同步！' });
+                        socket.emit('send_chat', { room_code: roomCode, user_name: '系統', color: 'yellow', message: '🔄 新玩家加入，請求同步狀態...' });
                     }, 500);
                 }
             });
 
-            // 💡 接收後端計時器強制同步
-            socket.on('sync_time', (data) => {
-                if (data.playerTimes) {
-                    playerTimes = data.playerTimes;
-                    updateUI();
-                }
-            });
-
             socket.on('update_board', (data) => {
-                isProcessing = false;
                 pieces = data.pieces;
                 walls = new Map(data.walls);
                 territories = new Map(data.territories);
@@ -548,6 +593,7 @@
                 playersInfo = data.playersInfo;
                 playerTimes = data.playerTimes;
                 
+                saveHistoryStep(); 
                 render();
                 autoCheckEndGame(false); 
             });
@@ -563,7 +609,12 @@
                     }
                     return; 
                 }
+
                 appendChatMessage(data.user_name, data.color, data.message);
+                
+                if (data.message === '🔄 新玩家加入，請求同步狀態...' && myOnlineColor === 'red') {
+                    broadcastGameState();
+                }
             });
         }
 
@@ -700,6 +751,10 @@
             phase = 'placement'; turnIndex = 0; selectedPieceIndex = -1; movedPieceIndex = -1; stepsTaken = 0; 
             isProcessing = false;
             initBoard();
+
+            moveHistory = [];
+            saveHistoryStep();
+
             startClock(); 
             checkAITurn(); 
             
@@ -730,6 +785,7 @@
         }
 
         function startClock() {
+            if (isReplayMode) return; 
             if (clockInterval) clearInterval(clockInterval);
             if (phase === 'game_over') return;
             
@@ -741,27 +797,35 @@
 
                 let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
 
-                // 💡 單機模式自己倒數；線上模式主要依賴 sync_time，但為了畫面流暢，本地也同步遞減顯示
-                if (playerTimes[currentColor] > 0) {
-                    playerTimes[currentColor]--;
-                    updateUI();
-                }
+                playerTimes[currentColor]--;
+                updateUI();
 
-                if (playerTimes[currentColor] <= 0) {
+                if (playerTimes[currentColor] === 0) {
+                    let baseName = getDisplayName(currentColor);
+                    let suffix = (mode === 'online' && currentColor === myOnlineColor) || (!mode && currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
+
                     if (mode === 'online') {
-                        // 💡 線上模式：完全交給伺服器處理 AI，前端不要自己動手！避免互相衝突。
-                        if (currentColor === myOnlineColor && !isProcessing) {
-                            appendChatMessage('系統', 'yellow', '⏳ 時間耗盡！等待伺服器代為結算...');
-                            isProcessing = true; 
+                        if (currentColor === myOnlineColor) {
+                            appendChatMessage('系統', 'yellow', '⏳ 時間耗盡！AI 已介入代為下棋與建牆。');
+                            executeAILogic(currentColor);
+                            broadcastGameState();
                         }
                     } else {
-                        // 💡 單機模式：由前端呼叫 AI
-                        let baseName = getDisplayName(currentColor);
-                        let suffix = (currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
                         appendChatMessage('系統', 'yellow', `⏳ ${baseName}${suffix} 時間耗盡！系統已代為執行。`);
                         executeAILogic(currentColor);
                     }
                 } 
+
+                else if (playerTimes[currentColor] === -3 && mode === 'online') {
+                    let nextPlayerIndex = (turnIndex + 1) % (phase === 'placement' ? placementQueue.length : movementOrder.length);
+                    let nextPlayer = phase === 'placement' ? placementQueue[nextPlayerIndex] : movementOrder[nextPlayerIndex];
+                    
+                    if (myOnlineColor === nextPlayer) {
+                        appendChatMessage('系統', 'red', `⚠️ 偵測到 ${getDisplayName(currentColor)} 斷線或無回應，由系統強制接管！`);
+                        executeAILogic(currentColor);
+                        broadcastGameState();
+                    }
+                }
             }, 1000);
         }
 
@@ -802,11 +866,13 @@
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             } else {
                 let myPieces = pieces.map((p, idx) => ({...p, idx})).filter(p => p.color === color);
+                
+                let isTimeoutBreak = (phase === 'wall_breaking');
                 let totalMobility = 0;
                 myPieces.forEach(p => totalMobility += getValidMoves(p.r, p.c).length);
                 
                 let myWalls = Array.from(walls.entries()).filter(([k, v]) => v === color);
-                if (playersInfo[color].hasBreaker && myWalls.length > 0 && totalMobility <= 2) {
+                if (playersInfo[color].hasBreaker && myWalls.length > 0 && (totalMobility <= 2 || isTimeoutBreak)) {
                     let randomWallKey = myWalls[Math.floor(Math.random() * myWalls.length)][0];
                     walls.delete(randomWallKey);
                     playersInfo[color].hasBreaker = false;
@@ -853,6 +919,7 @@
                 turnIndex = (turnIndex + 1) % movementOrder.length;
             }
 
+            saveHistoryStep(); 
             resetCurrentPlayerTimer(); 
             autoCheckEndGame(false); 
             render();
@@ -880,7 +947,7 @@
         }
 
         function checkAITurn() {
-            if (phase === 'game_over' || mode === 'online') { isProcessing = false; return; }
+            if (phase === 'game_over' || mode === 'online' || isReplayMode) { isProcessing = false; return; }
             let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
             
             if (isVsAI && currentColor === aiColor) {
@@ -944,6 +1011,18 @@
         }
 
         function updateUI() {
+            // 💡 覆盤模式介面
+            if (isReplayMode) {
+                turnDisplay.innerText = `🔄 覆盤觀看模式`;
+                turnDisplay.style.color = 'var(--text-main)';
+                let totalSteps = loadedReplayData.length > 0 ? loadedReplayData.length : 0;
+                let current = totalSteps > 0 ? currentReplayStep + 1 : 0;
+                instructionDisplay.innerText = `目前步數: ${current} / ${totalSteps}`;
+                breakerDisplay.innerHTML = '';
+                timerContainer.innerHTML = '';
+                return;
+            }
+
             let currentColor = phase === 'game_over' ? null : (phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex]);
             
             timerContainer.innerHTML = '';
@@ -953,7 +1032,6 @@
                 tBox.className = `timer-box ${isCurrent ? 'timer-active' : ''}`;
                 
                 let cName = getDisplayName(c);
-                // 確保顯示秒數不會出現負數
                 let displayTime = Math.max(0, playerTimes[c] || 0);
                 
                 tBox.innerHTML = `
@@ -976,19 +1054,20 @@
             let baseName = getDisplayName(currentColor);
             let suffix = (mode === 'online' && currentColor === myOnlineColor) || (!mode && currentColor === 'red') ? ' (你)' : (isVsAI && currentColor === aiColor ? ' (AI)' : '');
 
-            let phaseText = phase === 'placement' ? '放置階段' : phase === 'movement' ? '移動階段' : phase === 'wall_building' ? '建牆階段' : '破牆階段';
+            let phaseText = phase === 'placement' ? '放置階段' : phase === 'movement' ? '移動階段' : phase === 'wall_building' ? '建牆階段 (必須相鄰建牆)' : '破牆階段';
             turnDisplay.innerText = `當前回合：${baseName}${suffix}\n(${phaseText})`;
             turnDisplay.style.color = colorMap[currentColor].color;
 
             if (phase === 'placement') instructionDisplay.innerText = "請點擊空白棋格放置棋子";
-            else if (phase === 'movement') instructionDisplay.innerText = selectedPieceIndex === -1 ? "請選擇你的棋子，或使用破牆者" : `請點擊高亮木紋格移動 (已走 ${stepsTaken} / 2 步)\n若不想繼續移動，請「再次點擊自己」確認完成`;
+            else if (phase === 'movement') instructionDisplay.innerText = selectedPieceIndex === -1 ? "請選擇你的棋子，或使用破牆者" : `請點擊高亮綠格移動 (已走 ${stepsTaken} / 2 步)\n若不想繼續移動，請「再次點擊自己的棋子」確認完成`;
             else if (phase === 'wall_building') instructionDisplay.innerText = "請在剛移動的棋子四周放置一道牆";
             else if (phase === 'wall_breaking') instructionDisplay.innerText = "請選擇場上一道【你建立的牆壁】將其拆除";
 
             let statusArray = activeColors.map(c => {
-                return `${getDisplayName(c)}(${playersInfo[c].hasBreaker?"可":"無"})`;
+                let name = getDisplayName(c) + (isVsAI && c === aiColor ? '(AI)' : '');
+                return `${name}(${playersInfo[c].hasBreaker?"可":"無"})`;
             });
-            breakerDisplay.innerHTML = `破牆者狀態：<br>` + statusArray.join(" | ");
+            breakerDisplay.innerText = `破牆者：` + statusArray.join(" | ");
             btnBreaker.disabled = (phase !== 'movement' || stepsTaken > 0 || !playersInfo[currentColor].hasBreaker);
         }
 
@@ -1001,7 +1080,7 @@
         }
 
         function handleCellClick(r, c) {
-            if (phase === 'game_over' || isProcessing) return; 
+            if (isReplayMode || phase === 'game_over' || isProcessing) return; 
             let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
             if (isVsAI && currentColor === aiColor) return;
             if (!checkMyTurn(currentColor)) return;
@@ -1054,7 +1133,7 @@
         }
 
         function handleWallClick(r, c) {
-            if (phase === 'game_over' || isProcessing) return; 
+            if (isReplayMode || phase === 'game_over' || isProcessing) return; 
             let currentColor = phase === 'placement' ? placementQueue[turnIndex] : movementOrder[turnIndex];
             if (isVsAI && currentColor === aiColor) return;
             if (!checkMyTurn(currentColor)) return;
@@ -1089,7 +1168,7 @@
         }
 
         function toggleWallBreaker() {
-            if (isProcessing) return;
+            if (isReplayMode || isProcessing) return;
             let currentColor = movementOrder[turnIndex];
             if (!checkMyTurn(currentColor)) return;
 
@@ -1107,6 +1186,7 @@
             movedPieceIndex = -1; selectedPieceIndex = -1; stepsTaken = 0; phase = 'movement';
             turnIndex = (turnIndex + 1) % movementOrder.length;
             resetCurrentPlayerTimer(); 
+            saveHistoryStep(); 
             autoCheckEndGame(false); 
             render();
             broadcastGameState(); 
@@ -1226,14 +1306,16 @@
                     return `${colorChar}${isMe ? '(你)' : ''}:${scores[c]}`;
                 });
 
+                // ★ 將覆盤資料綁定在傳送給後端的 API 中
                 const historyRecord = {
                     date: new Date().toLocaleString('zh-TW'),
                     winner: winners.join(' & '), 
                     winScore: maxScore,
-                    details: detailParts.join(' | ')
+                    details: detailParts.join(' | '),
+                    replayData: JSON.stringify(moveHistory) 
                 };
                 
-                if (session) {
+                if (session && !isReplayMode) {
                     historyRecord.user_id = session.id;
                     fetch(`${API_URL}/api/save_history`, {
                         method: 'POST',
@@ -1326,7 +1408,27 @@
             });
         }
 
-        resetGame(false);
+        // 💡 初始化檢查：進入覆盤模式還是正常遊戲？
+        if (isReplayMode) {
+            document.getElementById('btn-breaker').style.display = 'none';
+            document.getElementById('btn-reset').style.display = 'none';
+            document.getElementById('replay-controls').style.display = 'flex';
+            document.querySelector('.timer-wrapper').style.display = 'none';
+            document.getElementById('float-mic-btn').style.display = 'none';
+            
+            const replayStr = localStorage.getItem('wallGoReplay');
+            if (replayStr) {
+                try {
+                    loadedReplayData = JSON.parse(replayStr);
+                } catch(e) {
+                    console.error("無法解析覆盤資料", e);
+                }
+            }
+            initBoard();
+            renderReplayStep();
+        } else {
+            resetGame(false);
+        }
     </script>
 </body>
 </html>
