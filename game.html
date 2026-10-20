@@ -10,10 +10,11 @@
         @import url('https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 
         :root {
-            /* ── 平面插畫海報風：橘底 × 米白物件 × 粗黑描邊 ── */
-            --orange: #cf5f28;
-            --orange-deep: #b04d1d;
-            --orange-hi: #e07338;
+            /* ── 淡天藍底 × 磚紅 × 米白紙 × 黑線條 ── */
+            --bg: #cfe4f1;
+            --orange: #b8553d;
+            --orange-deep: #96432f;
+            --orange-hi: #cc6a50;
             --cream: #f5ead3;
             --cream-hi: #fbf4e4;
             --cream-lo: #e6d9bb;
@@ -23,15 +24,15 @@
             --blue: #4a92c4;
             --green: #7fa93f;
             --yellow: #f2c14a;
-            --red: #d94f2b;
+            --red: #b8553d;
             --board-light: #f8f0dc;
 
             /* 沿用舊變數名稱（JS 內嵌樣式會用到） */
-            --bg-color: #cf5f28;
+            --bg-color: #cfe4f1;
             --card-border: #1b1b1b;
             --text-main: #1b1b1b;
             --text-sub: #6b6659;
-            --primary: #b04d1d;
+            --primary: #96432f;
             --btn-beige: #e6d9bb;
             --ink: #1b1b1b;
 
@@ -40,10 +41,10 @@
             --color-yellow: #f2c14a;
             --color-green: #7fa93f;
 
-            /* ── 棋盤：與大廳背景動畫同一組色（index.html 的 C 常數）── */
-            --sq-dark: #c9ab77;
-            --sq-light: #f2e3bb;
-            --sq-rim: #13294b;
+            /* ── 棋盤：米白方格紙＋磚紅外框，與大廳背景動畫同一組色（index.html 的 C 常數）── */
+            --sq-light: #f7f1e3;
+            --sq-line: #a9c8dc;
+            --sq-rim: #b8553d;
             /* 棋子／牆：body 為主色，top 為受光面，side 為暗面 */
             --pc-red: #c4442d;    --pc-red-top: #d8583f;    --pc-red-side: #9e3320;
             --pc-blue: #2c4a7c;   --pc-blue-top: #3f66a3;   --pc-blue-side: #1d3355;
@@ -56,7 +57,7 @@
         }
 
         * { box-sizing: border-box; }
-        html { background: var(--orange); }
+        html { background: var(--bg); }
 
         body {
             font-family: var(--font-sans);
@@ -82,8 +83,8 @@
         .vignette {
             position: fixed; inset: 0; pointer-events: none; z-index: 0;
             background:
-              radial-gradient(95% 75% at 50% 30%, rgba(224,115,56,.5) 0%, rgba(207,95,40,0) 62%),
-              radial-gradient(120% 95% at 50% 55%, rgba(0,0,0,0) 48%, rgba(120,50,16,.24) 84%, rgba(96,40,12,.36) 100%);
+              radial-gradient(95% 75% at 50% 30%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 62%),
+              radial-gradient(120% 95% at 50% 55%, rgba(0,0,0,0) 48%, rgba(40,80,110,.10) 84%, rgba(40,80,110,.20) 100%);
         }
         .grain {
             position: fixed; inset: -50%; pointer-events: none; z-index: 0;
@@ -186,56 +187,57 @@
             min-width: 0;
         }
 
+        /* ── 棋盤：仿大廳背景動畫 —— 方形深藍框、格子緊貼只留細格線，
+           牆道寬度為 0，牆以偽元素畫在格線上。尺寸用 cqw（1cqw = 棋盤內寬 1%，一格 ≈ 14.3cqw）── */
         .board {
             width: min(85vh, 100%);
             aspect-ratio: 1 / 1;
             height: auto;
             max-height: 100%;
-            background: var(--sq-dark);
+            container-type: inline-size;
+            background: var(--sq-light);
             padding: 0;
-            border-radius: 22px;
-            border: 13px solid var(--sq-rim);
-            box-shadow: 0 10px 0 -2px rgba(19,41,75,.45), 0 18px 34px rgba(60,20,6,.32);
+            border-radius: 0;
+            border: clamp(12px, 3.8vh, 32px) solid var(--sq-rim);
+            box-shadow: 0 22px 50px rgba(40, 70, 95, .35);
             display: grid;
-            grid-template-columns: repeat(6, 1fr 0.25fr) 1fr;
-            grid-template-rows: repeat(6, 1fr 0.25fr) 1fr;
+            grid-template-columns: repeat(6, 1fr 0) 1fr;
+            grid-template-rows: repeat(6, 1fr 0) 1fr;
             box-sizing: border-box;
             flex-shrink: 0;
         }
 
         .grid-item { display: flex; justify-content: center; align-items: center; transition: background-color .2s; }
-        .cell { background-color: var(--sq-light); border-radius: 3px; cursor: pointer; }
-        .cell.cell-alt { background-color: var(--sq-dark); }
+        /* 全部格子同一個米色，沒有深淺交錯，格子靠格線分出來 */
+        .cell { background-color: var(--sq-light); cursor: pointer;
+                box-shadow: inset 0 0 0 .5px var(--sq-line); }
         .cell:hover { background-color: var(--yellow); }
-        .wall-h, .wall-v { cursor: pointer; border-radius: 4px; }
         .intersection { background-color: transparent; }
 
-        /* ── 棋子：仿大廳的立體圓柱（頂面橢圓 ＋ 柱身 ＋ 落在棋盤上的影子）── */
+        /* ── 棋子：與大廳相同的扁圓柱（純色柱身＋頂面細環），
+           底面圓心落在格子中央，所以整顆往上提、頂端會略微超出格子 ── */
         .piece {
-            position: relative;
-            width: 64%; height: 78%;
+            position: relative; z-index: 4;
+            width: 52%; height: 70%;
+            transform: translateY(-28%);
             transition: transform .2s; pointer-events: none;
-            /* 用 drop-shadow 而非 box-shadow，影子才會貼合圓柱輪廓而不是方框 */
-            filter: drop-shadow(3px 4px 2.5px rgba(19, 41, 75, .34));
+            /* 往右下偏移的實心影子，只在柱身右下露出一彎，與大廳的地面影子一致 */
+            filter: drop-shadow(.8cqw .45cqw 0 rgba(22, 37, 61, .22));
         }
-        /* 柱身：左右邊緣壓暗做出圓弧受光，底緣是弧線 */
         .piece::before {
             content: '';
-            position: absolute; left: 0; right: 0; top: 20%; bottom: 0;
-            border: 2.5px solid var(--sq-rim); border-top: none;
-            border-radius: 0 0 50% 50% / 0 0 26% 26%;
-            background: linear-gradient(to right,
-                var(--pc-side) 0%, var(--pc-body) 28%, var(--pc-top) 52%,
-                var(--pc-body) 76%, var(--pc-side) 100%);
+            position: absolute; left: 0; right: 0; top: 21%; bottom: 0;
+            border: 2px solid #16253d; border-top: none;
+            border-radius: 0 0 50% 50% / 0 0 27% 27%;
+            background: var(--pc-body);
         }
-        /* 頂面：橢圓 ＋ 內圈環線，蓋住柱身開口 */
         .piece::after {
             content: '';
-            position: absolute; left: 0; right: 0; top: 0; height: 40%;
-            border: 2.5px solid var(--sq-rim); border-radius: 50%;
+            position: absolute; left: 0; right: 0; top: 0; height: 43%;
+            border: 2px solid #16253d; border-radius: 50%;
             background:
                 radial-gradient(closest-side ellipse at 50% 50%,
-                    transparent 0 60%, rgba(19, 41, 75, .38) 60% 71%, transparent 71%),
+                    transparent 0 40%, rgba(22, 37, 61, .35) 40% 49%, transparent 49%),
                 var(--pc-top);
         }
         .piece-red    { --pc-body: var(--pc-red);    --pc-top: var(--pc-red-top);    --pc-side: var(--pc-red-side); }
@@ -243,14 +245,28 @@
         .piece-yellow { --pc-body: var(--pc-yellow); --pc-top: var(--pc-yellow-top); --pc-side: var(--pc-yellow-side); }
         .piece-green  { --pc-body: var(--pc-green);  --pc-top: var(--pc-green-top);  --pc-side: var(--pc-green-side); }
 
-        /* ── 牆：上為受光的板面、下為暗側面，看起來像立在棋盤上的板子 ── */
-        .wall-placed {
-            cursor: default; border-radius: 2px;
-            border: 2px solid var(--sq-rim);
-            background-image: linear-gradient(to bottom,
-                var(--w-body) 0 64%, var(--w-side) 64% 100%) !important;
-            box-shadow: 0 2px 3px rgba(19, 41, 75, .34);
+        /* ── 牆：與大廳相同的細板，貼在格線上、往左上浮起 1cqw，右下露出暗色側面。
+           ::after 是頂面，::before 是側面（頂面的輪廓往右下拉出的斜切六邊形）。
+           兩端各多伸出半個牆厚，接角處兩道牆的頂面會完整重疊成實心方角；
+           牆本身不建立 stacking context，所有側面在 z 2、所有頂面在 z 3，
+           別道牆的側面不會蓋到頂面上。
+           牆元素本身是跨在格線兩側的透明點擊區，只在可點時接收滑鼠，免得擋到格子 ── */
+        .wall-h, .wall-v { position: relative; pointer-events: none; }
+        .wall-h { height: 4.8cqw; margin: -2.4cqw 0; }
+        .wall-v { width: 4.8cqw;  margin: 0 -2.4cqw; }
+        .wall-h::before, .wall-v::before,
+        .wall-h::after,  .wall-v::after { content: ''; position: absolute; pointer-events: none; }
+        .wall-h::after  { left: -1.93cqw; right: .07cqw; top: .47cqw; height: 1.86cqw; z-index: 3; }
+        .wall-v::after  { top: -1.93cqw; bottom: .07cqw; left: .47cqw; width: 1.86cqw; z-index: 3; }
+        .wall-h::before { left: -1.93cqw; right: -.93cqw; top: .47cqw; height: 2.86cqw; z-index: 2; }
+        .wall-v::before { top: -1.93cqw; bottom: -.93cqw; left: .47cqw; width: 2.86cqw; z-index: 2; }
+        .highlight-wall { pointer-events: auto; cursor: pointer; }
+
+        .wall-placed::before {
+            background: var(--w-side);
+            clip-path: polygon(0 0, calc(100% - 1cqw) 0, 100% 1cqw, 100% 100%, 1cqw 100%, 0 calc(100% - 1cqw));
         }
+        .wall-placed::after { background: var(--w-body); }
         .wall-red    { --w-body: var(--pc-red);    --w-side: var(--pc-red-side); }
         .wall-blue   { --w-body: var(--pc-blue);   --w-side: var(--pc-blue-side); }
         .wall-yellow { --w-body: var(--pc-yellow); --w-side: var(--pc-yellow-side); }
@@ -261,16 +277,20 @@
         .territory-yellow { background-color: rgba(242, 193, 74, .55) !important; }
         .territory-green { background-color: rgba(127, 169, 63, .42) !important; }
 
-        .highlight { background-color: var(--sky) !important; cursor: pointer; border-radius: 9px;
-            box-shadow: inset 0 0 0 3px var(--sq-rim); }
-        .highlight-wall { background-color: var(--pink) !important; cursor: pointer; border-radius: 4px;
-            box-shadow: inset 0 0 0 2px var(--sq-rim); }
+        .highlight { background-color: var(--sky) !important; cursor: pointer;
+            box-shadow: inset 0 0 0 3px var(--outline); }
+        /* 可蓋牆的位置：淡粉色虛影；滑過時變黃。拆牆階段則在既有牆外加粉色框 */
+        .highlight-wall:not(.wall-placed)::after { background: var(--pink); opacity: .75;
+            outline: 2px solid var(--outline); outline-offset: -1px; }
+        .highlight-wall:not(.wall-placed):hover::after { background: var(--yellow); opacity: 1; }
+        .wall-placed.highlight-wall::after { outline: 3px solid var(--pink); outline-offset: 1px; }
+        .wall-placed.highlight-wall:hover::after { outline-color: var(--yellow); }
         /* .selected 是加在棋子上的：方框 box-shadow 會露出圓柱外的直角，
            改用堆疊的 drop-shadow 讓光暈貼合柱體輪廓 */
         .piece.selected {
-            transform: scale(1.08);
+            transform: translateY(-28%) scale(1.08);
             filter: drop-shadow(0 0 2px var(--yellow)) drop-shadow(0 0 5px var(--yellow))
-                    drop-shadow(3px 4px 2.5px rgba(19, 41, 75, .34));
+                    drop-shadow(.8cqw .45cqw 0 rgba(22, 37, 61, .22));
         }
 
         .right-spacer { width: 240px; flex-shrink: 0; transition: width .4s cubic-bezier(.175,.885,.32,1.275); }
@@ -501,7 +521,7 @@
             .timer-container { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px; }
             .timer-box { flex: 1; min-width: 45%; justify-content: center; }
             .board-container { width: 100%; max-width: 100%; padding-bottom: 88px; }
-            .board { width: min(94vw, 500px); }
+            .board { width: min(94vw, 500px); border-width: 4.5vw; }
             .chat-area { width: min(88vw, 380px); right: -100vw; height: 80vh; z-index: 2000; }
             .chat-area.open { right: 10px; }
             .chat-toggle-btn { bottom: 15px; right: 15px; width: 50px; height: 50px; z-index: 1999; }

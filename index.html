@@ -10,10 +10,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 <style>
 :root{
-  /* ── 平面插畫海報風：橘底 × 米白物件 × 粗黑描邊 ── */
-  --orange:#cf5f28;
-  --orange-deep:#b04d1d;
-  --orange-hi:#e07338;
+  /* ── 淡天藍底 × 磚紅 × 米白紙 × 黑線條 ── */
+  --bg:#cfe4f1;
+  --orange:#b8553d;
+  --orange-deep:#96432f;
+  --orange-hi:#cc6a50;
   --cream:#f5ead3;
   --cream-hi:#fbf4e4;
   --cream-lo:#e6d9bb;
@@ -25,7 +26,7 @@
   --sky:#7db8dd;
   --green:#7fa93f;
   --yellow:#f2c14a;
-  --red:#d94f2b;
+  --red:#b8553d;
   --panel:#f5ead3;
 
   /* 棋子四色 */
@@ -42,7 +43,7 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0;background:var(--orange);color:var(--ink);
+  margin:0;background:var(--bg);color:var(--ink);
   font-family:var(--serif);font-weight:400;overflow:hidden;
   line-height:1.6;letter-spacing:.01em;
 }
@@ -50,7 +51,7 @@ body{
 
 /* 背景層次與紙質顆粒 */
 .vignette{position:fixed;inset:0;pointer-events:none;
-  background:radial-gradient(135% 105% at 50% 48%, rgba(0,0,0,0) 60%, rgba(120,50,16,.20) 86%, rgba(96,40,12,.36) 100%);}
+  background:radial-gradient(135% 105% at 50% 48%, rgba(0,0,0,0) 60%, rgba(40,80,110,.10) 86%, rgba(40,80,110,.20) 100%);}
 .grain{position:fixed;inset:-50%;pointer-events:none;opacity:.06;mix-blend-mode:multiply;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.55'/></svg>");}
 
@@ -70,7 +71,7 @@ body{
   -webkit-text-stroke:3px var(--outline);paint-order:stroke fill;
   text-shadow:5px 5px 0 var(--outline)}
 .brand p{margin:14px 0 0 4px;font-size:12px;font-weight:700;letter-spacing:.26em;
-  text-transform:uppercase;color:var(--cream-hi);white-space:nowrap}
+  text-transform:uppercase;color:var(--outline);white-space:nowrap}
 .brand hr{border:0;border-top:var(--bw) solid var(--outline);width:58%;margin:12px 0 0 4px}
 
 /* ── 左側選單（收合成圓形，滑到哪顆才展開哪顆） ── */
@@ -97,8 +98,10 @@ body{
 .who{grid-column:3;grid-row:1;justify-self:end;display:flex;align-items:center;gap:10px;
   background:none;border:0;padding:0;box-shadow:none}
 .whochip{display:flex;align-items:center;gap:12px;width:60px;height:60px;padding:0 6px;overflow:hidden;
-  border:var(--bw) solid var(--outline);border-radius:999px;background:var(--cream-hi);cursor:default;
+  border:var(--bw) solid var(--outline);border-radius:999px;background:var(--cream-hi);cursor:pointer;
+  font:inherit;color:inherit;text-align:left;
   transition:width .24s cubic-bezier(.2,.8,.2,1),transform .14s}
+.whochip:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
 .whochip:hover{width:238px;transform:translateY(-2px)}
 .ava{width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:var(--pink);
   border:2px solid var(--outline);display:grid;place-items:center;
@@ -127,17 +130,6 @@ body{
 .card:hover .cbody,.card:focus-within .cbody{opacity:1;transition-delay:.08s}
 .card h2{margin:0 0 13px;font-size:11.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
   color:var(--orange-deep)}
-.count{display:flex;align-items:baseline;gap:9px}
-.count strong{font-family:var(--display);font-size:52px;font-weight:400;line-height:1;color:var(--outline);
-  font-variant-numeric:tabular-nums;letter-spacing:.01em}
-.count span{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
-.pulse{width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--outline);
-  animation:bp 2.4s ease-in-out infinite;align-self:center}
-@keyframes bp{0%,100%{opacity:.4}50%{opacity:1}}
-.rows{margin-top:14px;border-top:2px solid var(--outline);padding-top:12px;display:grid;gap:9px}
-.row{display:flex;justify-content:space-between;font-size:12.5px;font-weight:400;color:var(--ink-2);
-  letter-spacing:.03em}
-.row i{font-style:normal;color:var(--outline);font-variant-numeric:tabular-nums;font-weight:700}
 .feed{display:grid;gap:11px;margin:0;padding:0}
 .feed li{list-style:none;display:flex;justify-content:space-between;gap:10px;font-size:12px;
   color:var(--ink-2);line-height:1.5}
@@ -153,16 +145,23 @@ body{
   stroke-linecap:round;stroke-linejoin:round}
 .tool:hover{background:var(--yellow);transform:translateY(-2px)}
 .tool:active{transform:translateY(1px)}
-.tool.off{background:var(--cream-lo)}
-.tool.off svg{opacity:.35}
 
 /* ── 對話框 ── */
-.scrim{position:fixed;inset:0;background:rgba(60,24,8,.62);backdrop-filter:blur(3px);
+.scrim{position:fixed;inset:0;background:rgba(25,45,60,.55);backdrop-filter:blur(3px);
   display:none;place-items:center;z-index:20;padding:20px}
 .scrim.on{display:grid}
 .modal{width:min(440px,100%);max-height:88vh;overflow-y:auto;border:3px solid var(--outline);
   border-radius:26px;padding:28px 26px 24px;background:var(--cream-hi)}
 .modal.wide{width:min(530px,100%)}
+/* 右上角的關閉鍵；標題留出位置不被蓋到 */
+.modal{position:relative}
+.modal-x{position:absolute;top:18px;right:18px;z-index:2;width:40px;height:40px;padding:0;display:grid;place-items:center;
+  border:2px solid var(--outline);border-radius:50%;background:var(--cream);cursor:pointer;
+  transition:background .16s}
+.modal-x svg{width:18px;height:18px;fill:none;stroke:var(--outline);stroke-width:2.6;stroke-linecap:round}
+.modal-x:hover{background:var(--cream-lo)}
+.modal-x:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.modal:has(.modal-x) h3{padding-right:52px}
 /* 捲動能力保留，但不畫出捲軸 */
 .modal{scrollbar-width:none;-ms-overflow-style:none}
 .modal::-webkit-scrollbar{width:0;height:0;display:none}
@@ -170,6 +169,70 @@ body{
   line-height:1.05;text-transform:uppercase;color:var(--outline)}
 .modal .sub{margin:0 0 22px;font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
   color:var(--orange-deep)}
+/* 歷史戰績：標題在左、總勝率環形圖在右上，弧長依勝率比例填滿 */
+.rate-ring{--size:108px;--num:34px;position:relative;flex:0 0 auto;width:var(--size);margin:-6px -2px 10px 0;text-align:center}
+.rate-ring svg{display:block;width:var(--size);height:var(--size);rotate:-90deg}
+.rate-ring circle{fill:none;stroke-width:12}
+.rate-ring .track{stroke:var(--cream-lo)}
+.rate-ring .arc{stroke:var(--orange);stroke-linecap:round;stroke-dasharray:0 100;
+  transition:stroke-dasharray .9s cubic-bezier(.3,.7,.4,1)}
+.rate-ring .num{position:absolute;left:0;right:0;top:0;height:var(--size);display:grid;place-content:center;
+  grid-auto-flow:column;align-items:baseline;gap:1px;color:var(--orange)}
+.rate-ring .num b{font-family:var(--display);font-size:var(--num);font-weight:400;line-height:1;
+  font-variant-numeric:tabular-nums}
+.rate-ring .num small{font-size:13px;font-weight:700;color:var(--ink-2)}
+.rate-ring figcaption{margin-top:4px;font-size:10.5px;font-weight:700;letter-spacing:.2em;color:var(--ink-2)}
+/* 歷史戰績：總對局在左；右邊兩個環形圖 —— 勝／敗（磚紅＝勝場段、深灰＝敗場段）與勝率 */
+.me-stats{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:4px 0 16px;border-bottom:2px solid rgba(27,27,27,.14)}
+.me-total{margin:0;display:grid;gap:2px;font-size:12px;font-weight:700;letter-spacing:.2em;color:var(--ink-2)}
+.me-total b{font-family:var(--display);font-size:46px;font-weight:400;letter-spacing:0;line-height:1;
+  color:var(--outline);font-variant-numeric:tabular-nums}
+.me-rings{display:flex;align-items:flex-start;gap:12px}
+.me-rings .rate-ring{margin:0}
+.rate-ring.wl{--num:28px}
+.rate-ring.wl .num{color:var(--outline)}
+.rate-ring.wl .num b:first-child{color:var(--orange)}
+.rate-ring.wl .num b:last-child{color:var(--ink-2)}
+.rate-ring.wl .num small{margin:0 2px;font-size:16px}
+/* 勝敗合成一圈：磚紅＝勝場段、深灰＝接在後面的敗場段，用平頭線帽讓兩段剛好接上 */
+.rate-ring.wl .arc{stroke-linecap:butt}
+.rate-ring .arc.lose{stroke:var(--ink-2)}
+/* 全站戰績：左邊總對局，右邊三行統計 */
+.g-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;flex:1;min-width:0}
+.g-list li{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink-2)}
+.g-list b{color:var(--outline);font-weight:700;font-variant-numeric:tabular-nums}
+/* 大廳側欄卡片只有 264px 寬，三樣東西縮小一號 */
+.card-stats{padding:0;border:0;gap:10px}
+.card-stats .me-total b{font-size:38px}
+.card-stats .me-rings{gap:10px}
+.card-stats .rate-ring{--size:82px;--num:25px}
+.card-stats .rate-ring.wl{--num:20px}
+.card-stats .rate-ring.wl .num small{font-size:12px}
+@media (max-width:420px){
+  .me-stats{flex-direction:column;align-items:flex-start}
+  .me-total{display:flex;align-items:baseline;gap:10px}
+  .me-rings{width:100%;justify-content:space-between}
+}
+/* 並排按鈕：左 70%、右 30% */
+.btn-row{display:grid;grid-template-columns:7fr 3fr;gap:12px;margin-top:18px}
+.btn-row > .btn,.btn-row > .close{margin:0;width:100%}
+/* 開關：膠囊底＋圓形把手，開啟時底色轉綠、把手滑到右邊（略帶回彈） */
+.toggle-row{align-items:center;cursor:pointer}
+.logout-confirm{margin-top:18px;padding:16px;border:2px solid var(--red);border-radius:18px;background:rgba(217,79,43,.08);
+  animation:confirmIn .22s ease-out both}
+@keyframes confirmIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.btn[hidden]{display:none}
+.logout-confirm p{margin:0;font-size:14px;font-weight:700;color:var(--outline);text-align:center}
+.logout-confirm .btn-row{margin-top:12px}
+.switch{position:relative;flex:0 0 auto;width:54px;height:30px;padding:0;border:2px solid var(--outline);
+  border-radius:999px;background:var(--cream-lo);cursor:pointer;transition:background .25s}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
+  background:var(--cream-hi);border:2px solid var(--outline);box-sizing:border-box;
+  box-shadow:0 2px 4px rgba(0,0,0,.25);transition:transform .32s cubic-bezier(.34,1.56,.64,1)}
+.switch[aria-checked="true"]{background:var(--green)}
+.switch[aria-checked="true"]::after{transform:translateX(24px)}
+.switch:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
 .stat{display:flex;justify-content:space-between;gap:16px;padding:11px 0;line-height:1.6;
   border-bottom:2px solid rgba(27,27,27,.14);font-size:13.5px;font-weight:600;color:var(--outline)}
 .stat span{color:var(--ink-2);font-weight:400;white-space:nowrap}
@@ -266,7 +329,7 @@ body{
   -webkit-text-stroke:3px var(--outline);paint-order:stroke fill;
   text-shadow:5px 5px 0 var(--outline)}
 .auth-inner .tag{font-size:11px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;
-  color:var(--cream-hi);margin:0 0 26px}
+  color:var(--outline);margin:0 0 26px}
 .auth-card{border:3px solid var(--outline);border-radius:26px;padding:26px;text-align:left;
   background:var(--cream-hi)}
 .tabs{display:flex;gap:8px;margin-bottom:22px}
@@ -320,7 +383,7 @@ body{
   box-sizing:border-box}
 .grid-item{display:flex;justify-content:center;align-items:center}
 .cell{background-color:var(--cream-hi);border-radius:8px;box-shadow:inset 0 0 0 2px var(--outline)}
-.wall-h,.wall-v{border-radius:4px}
+.wall-h,.wall-v{border-radius:0}   /* 直角，接到交叉點才不會有缺口 */
 .intersection{background-color:transparent}
 .piece{border-radius:50%;width:74%;height:74%;border:2.5px solid var(--outline);box-sizing:border-box}
 .piece-red{background-color:var(--color-red)}
@@ -352,12 +415,10 @@ body{
   .brand h1{font-size:clamp(38px,4vw,52px)}
   .brand p{font-size:10.5px;margin-top:10px}
   .brand hr{margin-top:8px}
-  .count strong{font-size:40px}
   .card h2{margin-bottom:10px}
 }
 @media (max-height:600px){
   .side-rail{gap:10px}
-  .rows{margin-top:10px;padding-top:9px}
   .tools{display:none}
 }
 
@@ -457,31 +518,30 @@ body{
       <svg class="ico" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
       <span class="txt"><b>歷史戰績</b><small id="menu-history-sub">對局紀錄與棋盤覆盤</small></span><span class="arw">›</span>
     </button>
-    <button class="item" data-act="me" title="我的資料">
-      <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>
-      <span class="txt"><b>我的資料</b><small>暱稱、頭像與戰績統計</small></span><span class="arw">›</span>
-    </button>
    </div>
   </nav>
 
   <div class="who">
-    <div class="whochip">
+    <!-- 「我的資料」入口：點右上角的頭像 -->
+    <button class="whochip" data-act="me" title="我的資料">
       <div class="ava" id="display-avatar">👤</div>
       <div class="txt"><b id="display-name">載入中…</b><small id="display-id">ID: —</small></div>
-    </div>
+    </button>
   </div>
 
   <div class="side">
    <div class="side-rail">
-    <section class="card" tabindex="0" title="我的戰績">
+    <section class="card" tabindex="0" title="全站戰績">
       <div class="cico"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
       <div class="cbody">
-        <h2>我的戰績</h2>
-        <div class="count"><span class="pulse"></span><strong id="win-rate">0%</strong><span>勝率</span></div>
-        <div class="rows">
-          <div class="row"><span>總對局</span><i id="total-games">0</i></div>
-          <div class="row"><span>勝場</span><i id="total-wins">0</i></div>
-          <div class="row"><span>敗場</span><i id="total-loses">0</i></div>
+        <h2>全站戰績</h2>
+        <div class="me-stats card-stats">
+          <p class="me-total">總對局<b id="g-total">—</b></p>
+          <ul class="g-list">
+            <li><span>參與玩家</span><b id="g-players">—</b></li>
+            <li><span>最高圍地</span><b id="g-best">—</b></li>
+            <li><span>平均圍地</span><b id="g-avg">—</b></li>
+          </ul>
         </div>
       </div>
     </section>
@@ -489,7 +549,7 @@ body{
     <section class="card" tabindex="0" title="最新戰報">
       <div class="cico"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 14h5"/></svg></div>
       <div class="cbody">
-        <h2>最新戰報</h2>
+        <h2>最新戰報（全站）</h2>
         <ul class="feed" id="feed-list">
           <li><span>戰績載入中…</span></li>
         </ul>
@@ -501,7 +561,6 @@ body{
   <audio id="bgm" loop preload="none" src="assets/bgm.mp3"></audio>
 
   <div class="tools">
-    <button class="tool" id="mute" title="音樂／音效"><svg viewBox="0 0 24 24"><path d="M9 9h3l4-3v12l-4-3H9z"/><path d="M18 9c1 1.6 1 4.4 0 6"/></svg></button>
     <button class="tool" data-act="help" title="規則"><svg viewBox="0 0 24 24"><path d="M9.5 9a2.6 2.6 0 1 1 3.4 2.5c-.6.3-.9.9-.9 1.6v.6"/><circle cx="12" cy="17.4" r=".7" fill="currentColor" stroke="none"/></svg></button>
     <button class="tool" data-act="info" title="系統資訊"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7.6" r=".7" fill="currentColor" stroke="none"/></svg></button>
     <button class="tool" data-act="settings" title="設定"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button>
@@ -517,14 +576,17 @@ body{
     <p class="hint" style="margin:0 0 16px">請輸入您的玩家 ID 以及欲修改的新密碼。</p>
     <div class="field"><label>玩家 ID</label><input type="text" id="forgot-pwd-id" placeholder="例: #1234"></div>
     <div class="field"><label>設定新密碼</label><input type="password" id="forgot-pwd-new" placeholder="請輸入新密碼"></div>
-    <button class="btn gold" onclick="resetPassword()">確認重設</button>
-    <button class="close" onclick="closeModal('forgot-pwd-modal')">取消</button>
+    <div class="btn-row">
+      <button class="btn gold" onclick="resetPassword()">確認重設</button>
+      <button class="close" onclick="closeModal('forgot-pwd-modal')">取消</button>
+    </div>
   </div>
 </div>
 
 <!-- 單機開局 -->
 <div class="scrim" id="solo-modal">
   <div class="modal">
+    <button class="modal-x" onclick="closeModal('solo-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h3>Local game</h3><p class="sub">單機對戰 ・ 選擇人數</p>
     <div class="opt" id="solo-chips">
       <button class="chip" data-val="ai">AI</button>
@@ -533,7 +595,6 @@ body{
       <button class="chip" data-val="4">4 人</button>
     </div>
     <button class="btn gold" style="margin-top:18px" onclick="startGame()">開始單機遊戲</button>
-    <button class="close" onclick="closeModal('solo-modal')">關閉</button>
   </div>
 </div>
 
@@ -541,6 +602,7 @@ body{
 <div class="scrim" id="room-modal">
   <div class="modal wide">
     <div id="room-ui-main">
+      <button class="modal-x" onclick="closeModal('room-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <h3>Online</h3><p class="sub">線上對戰大廳</p>
       <button class="btn gold" onclick="createRoom()">建立新房間</button>
       <hr class="divider">
@@ -549,7 +611,6 @@ body{
         <input type="text" id="join-room-input" placeholder="代碼" maxlength="4">
         <button class="btn" onclick="joinRoom()">加入</button>
       </div>
-      <button class="close" onclick="closeModal('room-modal')">取消</button>
     </div>
 
     <div id="room-ui-waiting" style="display:none">
@@ -558,8 +619,10 @@ body{
       <div class="code" id="display-room-code">0000</div>
       <div class="grouplbl">房內玩家（<span id="room-player-count">1</span>/4）</div>
       <div class="rlist" id="room-players-list"></div>
-      <button class="btn gold" id="btn-start-online" style="margin-top:18px" disabled onclick="startOnlineGame()">開始線上對戰</button>
-      <button class="close" onclick="leaveRoom()">離開房間</button>
+      <div class="btn-row">
+        <button class="btn gold" id="btn-start-online" disabled onclick="startOnlineGame()">開始線上對戰</button>
+        <button class="close" onclick="leaveRoom()">離開房間</button>
+      </div>
     </div>
   </div>
 </div>
@@ -567,6 +630,7 @@ body{
 <!-- 好友 -->
 <div class="scrim" id="friends-modal">
   <div class="modal wide">
+    <button class="modal-x" onclick="closeModal('friends-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h3>Friends</h3><p class="sub">我的好友</p>
     <div class="joinbar">
       <input type="text" id="add-friend-input" placeholder="#1234" style="font-size:16px;letter-spacing:.16em">
@@ -575,25 +639,48 @@ body{
     <div id="friend-list-render" style="margin-top:6px">
       <p class="empty">載入中…</p>
     </div>
-    <button class="close" onclick="closeModal('friends-modal')">關閉</button>
   </div>
 </div>
 
 <!-- 歷史戰績 -->
 <div class="scrim" id="history-modal">
   <div class="modal wide">
+    <button class="modal-x" onclick="closeModal('history-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h3>Records</h3><p class="sub">歷史戰績 ・ 棋盤覆盤</p>
-    <div class="stat"><span>總對局</span><i id="h-total">0 場</i></div>
-    <div class="stat"><span>勝率</span><i id="h-rate">0%</i></div>
+    <div class="me-stats">
+      <p class="me-total">總對局<b id="me-total">0</b></p>
+      <div class="me-rings">
+        <figure class="rate-ring wl" aria-label="勝敗">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <defs><linearGradient id="me-grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="var(--orange-hi)"/><stop offset="1" stop-color="var(--orange-deep)"/>
+            </linearGradient></defs>
+            <circle class="track" cx="60" cy="60" r="50"/>
+            <circle class="arc" id="me-win-arc" cx="60" cy="60" r="50" pathLength="100" style="stroke:url(#me-grad)"/>
+            <circle class="arc lose" id="me-lose-arc" cx="60" cy="60" r="50" pathLength="100"/>
+          </svg>
+          <div class="num"><b id="me-wins">0</b><small>/</small><b id="me-loses">0</b></div>
+          <figcaption>勝／敗</figcaption>
+        </figure>
+        <figure class="rate-ring" aria-label="勝率">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="track" cx="60" cy="60" r="50"/>
+            <circle class="arc" id="me-rate-arc" cx="60" cy="60" r="50" pathLength="100" style="stroke:url(#me-grad)"/>
+          </svg>
+          <div class="num"><b id="me-rate">0</b><small>%</small></div>
+          <figcaption>勝率</figcaption>
+        </figure>
+      </div>
+    </div>
     <div class="rlist" id="history-list" style="max-height:320px;margin-top:14px"></div>
     <button class="btn danger" style="margin-top:16px" onclick="clearHistory()">清除所有紀錄</button>
-    <button class="close" onclick="closeModal('history-modal')">關閉</button>
   </div>
 </div>
 
 <!-- 覆盤 -->
 <div class="scrim" id="replay-modal">
   <div class="modal wide">
+    <button class="modal-x" onclick="closeReplay()" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h3>Replay</h3><p class="sub">棋盤覆盤</p>
     <div id="replay-board" class="board" style="width:100%;max-width:min(100%,52vh);aspect-ratio:1/1;margin:0 auto"></div>
     <div class="replay-bar">
@@ -601,46 +688,37 @@ body{
       <span id="replay-step-display">0 / 0</span>
       <button class="btn" id="btn-next-step" onclick="changeReplayStep(1)">下一步</button>
     </div>
-    <button class="close" onclick="closeReplay()">關閉覆盤</button>
-  </div>
-</div>
-
-<!-- 我的資料 -->
-<div class="scrim" id="me-modal">
-  <div class="modal">
-    <h3 id="me-name">玩家</h3><p class="sub" id="me-id">ID: —</p>
-    <div class="stat"><span>總對局</span><i id="me-total">0</i></div>
-    <div class="stat"><span>勝／敗</span><i id="me-wl">0 / 0</i></div>
-    <div class="stat"><span>勝率</span><i id="me-rate">0%</i></div>
-    <div class="stat"><span>最近戰果</span><i id="me-last">—</i></div>
-    <button class="btn" style="margin-top:18px" onclick="openProfileEditor()">編輯個人資料</button>
-    <button class="btn" onclick="openFriendList()">好友名單</button>
-    <button class="close" onclick="closeModal('me-modal')">關閉</button>
   </div>
 </div>
 
 <!-- 編輯資料 -->
 <div class="scrim" id="profile-modal">
   <div class="modal">
-    <h3>Profile</h3><p class="sub">編輯個人資料</p>
+    <button class="modal-x" onclick="closeModal('profile-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h3>Profile</h3><p class="sub" id="profile-id">編輯個人資料</p>
     <div class="field"><label>玩家頭像（單一字母或 Emoji）</label><input type="text" id="input-avatar" maxlength="2"></div>
     <div class="field"><label>玩家暱稱</label><input type="text" id="input-name"></div>
-    <button class="btn gold" onclick="saveProfile()">儲存修改</button>
-    <button class="close" onclick="closeModal('profile-modal')">取消</button>
+    <button class="btn gold" style="margin-top:18px" onclick="saveProfile()">儲存修改</button>
   </div>
 </div>
 
 <!-- 設定 -->
 <div class="scrim" id="settings-modal">
   <div class="modal">
+    <button class="modal-x" onclick="closeModal('settings-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h3>Settings</h3><p class="sub">設定</p>
-    <div class="stat"><span>背景動畫</span><i id="set-anim">開啟</i></div>
-    <div class="stat"><span>音樂／音效</span><i id="set-music">開啟</i></div>
-    <button class="btn" style="margin-top:18px" onclick="toggleAnim()">切換背景動畫</button>
-    <button class="btn" onclick="toggleMusic()">切換音樂／音效</button>
-    <button class="btn" onclick="closeModal('settings-modal');openProfileEditor()">編輯個人資料</button>
-    <button class="btn danger" onclick="logout()">登出帳號</button>
-    <button class="close" onclick="closeModal('settings-modal')">關閉</button>
+    <label class="stat toggle-row"><span>背景動畫</span>
+      <button class="switch" id="set-anim" role="switch" aria-checked="true" onclick="toggleAnim()"></button></label>
+    <label class="stat toggle-row"><span>音樂／音效</span>
+      <button class="switch" id="set-music" role="switch" aria-checked="true" onclick="toggleMusic()"></button></label>
+    <button class="btn danger" id="logout-btn" style="margin-top:18px" onclick="askLogout(true)">登出帳號</button>
+    <div class="logout-confirm" id="logout-confirm" hidden>
+      <p>確定要登出帳號嗎？</p>
+      <div class="btn-row">
+        <button class="btn danger" onclick="logout()">確定登出</button>
+        <button class="close" onclick="askLogout(false)">取消</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -661,6 +739,7 @@ body{
 <!-- 系統資訊 -->
 <div class="scrim" id="info-modal">
   <div class="modal">
+    <button class="modal-x" onclick="closeModal('info-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h3>About</h3><p class="sub">系統資訊</p>
     <div class="stat"><span>遊戲名稱</span><i>Wall Go（源自魔鬼的計謀）</i></div>
     <div class="stat"><span>目前版本</span><i>v12（新版大廳）</i></div>
@@ -677,7 +756,6 @@ body{
       <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0</a>。
     </p>
     <p class="hint" style="margin-top:16px;text-align:center;color:var(--brass-soft)">已成功連接至雲端資料庫</p>
-    <button class="close" onclick="closeModal('info-modal')">關閉</button>
   </div>
 </div>
 
@@ -689,16 +767,15 @@ body{
 
 <script>
 /* ═════════ 設定 / 音樂 ═════════ */
-const muteBtn = document.getElementById('mute');
-if (localStorage.getItem('wallGoMusic') === 'off') muteBtn.classList.add('off');
-muteBtn.onclick = () => toggleMusic();
+/* 音樂／音效開關只在「設定」裡切換 */
+let MUSIC_OFF = localStorage.getItem('wallGoMusic') === 'off';
 
 /* 背景音樂：assets/bgm.mp3（Carefree — Kevin MacLeod, CC BY 4.0）。
    瀏覽器一律禁止未經互動的自動播放，所以真正開聲是在第一次點擊／按鍵時。 */
 const BGM_VOLUME = 0.16;
 const bgmEl = document.getElementById('bgm');
 
-function musicOn(){ return !muteBtn.classList.contains('off'); }
+function musicOn(){ return !MUSIC_OFF; }
 
 function startMusic(){
   if (!musicOn()) return;
@@ -757,7 +834,7 @@ let REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches
            || localStorage.getItem('wallGoAnim') === 'off';
 
 const C = {
-  dark:'#c9ab77', light:'#f2e3bb', rim:'#13294b', rimEdge:'#13294b', edge:'#16253d',
+  light:'#f7f1e3', line:'#a9c8dc', rim:'#b8553d', rimEdge:'#b8553d', edge:'#16253d',
   /* 四位玩家，每人兩子；牆的顏色＝棋子的顏色 */
   p:[{body:'#c4442d', top:'#d8583f', wall:'#c4442d', wallSide:'#9e3320'},
      {body:'#2c4a7c', top:'#3f66a3', wall:'#2c4a7c', wallSide:'#1d3355'},
@@ -775,9 +852,18 @@ let layoutT = 0, layoutTarget = 0;
 
 /* 靠右版面要與左側登入區塊等高，所以直接量它的實際高度。
    量一次快取起來，避免每幀 getBoundingClientRect 造成重排。 */
-/* 大廳左右都有 UI：選單項目 hover 展開 322px、戰績卡展開 338px，
-   加上 .stage 的 34px 內距。棋盤要讓開這兩塊才不會被壓到。 */
-const LOBBY_RESERVE = 34 + 338 + 26;
+/* 大廳左右都有 UI：選單項目 hover 展開 322px、側欄卡片展開 338px。
+   棋盤置中，所以每一側都要讓出「兩邊之中較寬的那塊」再加間隙。
+   內距會隨斷點改變，因此量實際位置而不是寫死；量不到時用預設值。 */
+const MENU_OPEN_W = 322, CARD_OPEN_W = 338, LOBBY_GAP = 40;
+let lobbyReserve = 34 + CARD_OPEN_W + LOBBY_GAP;
+function measureLobby(){
+  const menu = document.querySelector('.menu'), side = document.querySelector('.side');
+  if (!menu || !side) return;
+  const m = menu.getBoundingClientRect(), r = side.getBoundingClientRect();
+  if (!m.width || !r.width) return;                     /* 大廳還沒顯示 */
+  lobbyReserve = Math.max(m.left + MENU_OPEN_W, innerWidth - r.right + CARD_OPEN_W) + LOBBY_GAP;
+}
 let inLobby = false;
 
 let authBox = null;
@@ -793,7 +879,10 @@ function measureAuth(){
 function setLayout(t, instant){
   layoutTarget = t;
   if(t) measureAuth();
-  if(instant){ layoutT = t; applyLayout(); }
+  /* 背景動畫關閉時沒有每幀的 draw() 來做緩動，必須當場定位並重畫一次，
+     否則棋盤會停在載入時的置中位置，壓到登入卡或側欄 */
+  if(instant || REDUCED){ layoutT = t; applyLayout(); }
+  if(REDUCED) draw(0);
 }
 
 /* 棋盤含深藍外框是 N+0.7 格寬（drawBoard 從 -0.35 畫到 N+0.35），
@@ -811,7 +900,7 @@ function applyLayout(){
   const sH = availH / FRAME_SPAN;
   /* 置中：整個視窗都可用；靠右：只剩右側約 55% 的寬度 */
   const s0 = inLobby
-    ? Math.min(Math.max(W - LOBBY_RESERVE*2, 260)/FRAME_SPAN, sH)
+    ? Math.min(Math.max(W - lobbyReserve*2, 260)/FRAME_SPAN, sH)
     : Math.min(W/(FRAME_SPAN+0.6), sH);
 
   /* 靠右時與左側登入區塊對稱：外框高度與它相同，且棋盤右邊距 ==
@@ -841,6 +930,7 @@ function resize(){
   cv.style.width = W+'px'; cv.style.height = H+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
   if(layoutTarget) measureAuth();
+  if(inLobby) measureLobby();
   applyLayout();
 }
 addEventListener('resize', resize); resize();
@@ -1170,15 +1260,19 @@ function poly(pts){ ctx.beginPath(); ctx.moveTo(pts[0].X,pts[0].Y);
 
 function drawBoard(){
   const c=[proj(0,0),proj(N,0),proj(N,N),proj(0,N)];
-  ctx.save(); ctx.shadowColor='rgba(70,28,8,.5)'; ctx.shadowBlur=50; ctx.shadowOffsetY=22;
+  ctx.save(); ctx.shadowColor='rgba(40,70,95,.35)'; ctx.shadowBlur=50; ctx.shadowOffsetY=22;
   poly([proj(-.35,-.35),proj(N+.35,-.35),proj(N+.35,N+.35),proj(-.35,N+.35)]);
   ctx.fillStyle=C.rim; ctx.fill(); ctx.restore();
 
-  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
-    poly([proj(x,y),proj(x+1,y),proj(x+1,y+1),proj(x,y+1)]);
-    ctx.fillStyle=(x+y)%2 ? C.dark : C.light; ctx.fill();
+  /* 米白方格紙：整片同色，格子靠細格線分出來 */
+  poly(c); ctx.fillStyle=C.light; ctx.fill();
+  ctx.beginPath();
+  for(let i=1;i<N;i++){
+    const a=proj(i,0), b=proj(i,N), d=proj(0,i), e=proj(N,i);
+    ctx.moveTo(a.X,a.Y); ctx.lineTo(b.X,b.Y); ctx.moveTo(d.X,d.Y); ctx.lineTo(e.X,e.Y);
   }
-  poly(c); ctx.strokeStyle='rgba(19,41,75,.55)'; ctx.lineWidth=2; ctx.stroke();
+  ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.stroke();
+  poly(c); ctx.strokeStyle='rgba(90,40,28,.45)'; ctx.lineWidth=2; ctx.stroke();
 }
 
 /* 往左上浮起 d 格的立體板：先用暗面填滿 base→top 之間的側牆，
@@ -1263,6 +1357,7 @@ function draw(now){
 function drawStatic(){
   initBg();
   for(let i=0;i<9;i++){ const p=pick(pieces); const s=wallSpots(p.x,p.y); if(s.length) walls.set(pick(s),{p:p.p,t:0}); }
+  layoutT = layoutTarget; applyLayout();     /* 動畫中途關掉時，直接跳到目標版面 */
   draw(0);
 }
 
@@ -1339,8 +1434,8 @@ document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
   if(a==='room')       openRoomModal();
   if(a==='friend')     openFriendList();
   if(a==='history')    openHistoryModal();
-  if(a==='me')         openMeModal();
-  if(a==='settings')   { syncSettingsUI(); openModal('settings-modal'); }
+  if(a==='me')         openProfileEditor();
+  if(a==='settings')   { syncSettingsUI(); askLogout(false); openModal('settings-modal'); }
   if(a==='help')       openModal('rules-modal');
   if(a==='info')       openModal('info-modal');
 });
@@ -1459,7 +1554,7 @@ async function performLogin(){
       localStorage.setItem('wallGoSession', JSON.stringify(currentUser));
       document.getElementById('login-pwd').value = '';
       checkLogin();
-      loadHistory();
+      loadHistory(); loadGlobalStats();
     } else toast(result.message);
   } catch (error) { toast('無法連線到伺服器，請確認後端已成功啟動！'); }
 }
@@ -1484,7 +1579,7 @@ async function performRegister(){
       document.getElementById('reg-name').value = '';
       document.getElementById('reg-pwd').value = '';
       checkLogin();
-      loadHistory();
+      loadHistory(); loadGlobalStats();
     } else toast(result.message);
   } catch (error) { toast('無法連線到伺服器，請確認後端已成功啟動！'); }
 }
@@ -1516,6 +1611,11 @@ async function resetPassword(){
   } catch (error) { toast('無法連線到伺服器，請確認後端已成功啟動！'); }
 }
 
+/* 登入／註冊表單按 Enter 直接送出 */
+[['form-login', () => performLogin()], ['form-register', () => performRegister()]].forEach(([id, submit]) =>
+  document.querySelectorAll(`#${id} input`).forEach(inp =>
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) submit(); })));
+
 /* 開場動畫的接力點：畫布把牆打破時呼叫，UI 才開始滑入 */
 function onIntroBreak(){
   setLayout(1);                       /* 棋盤讓到右半邊，左半邊留給登入卡 */
@@ -1533,6 +1633,7 @@ function checkLogin(){
     document.getElementById('stage').classList.add('on');
     /* 大廳的 UI 左右都有，棋盤回到置中並縮到兩側 rail 之間 */
     inLobby = true;
+    measureLobby();
     setLayout(0);
     applyLayout();
     updateProfileUI();
@@ -1540,18 +1641,24 @@ function checkLogin(){
     const el=document.getElementById('auth-page');
     /* 開場動畫播完前先藏著；不播動畫時直接顯示 */
     inLobby = false;
-    if(!REDUCED && !el.classList.contains('intro-play')) el.classList.add('intro-wait');
-    else setLayout(1, true);          /* 不播開場就沒有過場，直接就定位 */
+    const skipIntro = REDUCED || el.classList.contains('intro-play');
+    if(!skipIntro) el.classList.add('intro-wait');
     el.classList.add('on');
     document.getElementById('stage').classList.remove('on');
+    /* 不播開場就沒有過場，直接就定位；要在登入卡顯示之後才量得到它的尺寸 */
+    if(skipIntro) setLayout(1, true);
   }
 }
 
+/* 登出要二次確認：第一次按只是把按鈕換成「確定登出／取消」 */
+function askLogout(show){
+  document.getElementById('logout-btn').hidden = show;
+  document.getElementById('logout-confirm').hidden = !show;
+}
+
 function logout(){
-  if (confirm('確定要登出帳號嗎？')) {
-    localStorage.removeItem('wallGoSession');
-    location.reload();
-  }
+  localStorage.removeItem('wallGoSession');
+  location.reload();
 }
 
 function updateProfileUI(){
@@ -1561,7 +1668,7 @@ function updateProfileUI(){
 }
 
 function openProfileEditor(){
-  closeModal('me-modal');
+  document.getElementById('profile-id').innerText = `編輯個人資料 ・ ID: ${currentUser.id}`;
   document.getElementById('input-name').value = currentUser.name;
   document.getElementById('input-avatar').value = currentUser.avatar;
   openModal('profile-modal');
@@ -1591,12 +1698,6 @@ async function saveProfile(){
 /* ═════════ 歷史戰績 ═════════ */
 function openHistoryModal(){ openModal('history-modal'); loadHistory(); }
 
-function openMeModal(){
-  document.getElementById('me-name').innerText = currentUser.name;
-  document.getElementById('me-id').innerText = `ID: ${currentUser.id}`;
-  openModal('me-modal');
-}
-
 async function loadHistory(){
   if (!currentUser) return;
   const listEl = document.getElementById('history-list');
@@ -1619,8 +1720,6 @@ async function loadHistory(){
     if (history.length === 0) {
       renderStats(0, 0);
       listEl.innerHTML = '<div class="empty">尚無比賽紀錄<br>趕快開始第一場對戰吧！</div>';
-      document.getElementById('feed-list').innerHTML = '<li><span>尚無戰報，開一局來寫下第一筆吧。</span></li>';
-      document.getElementById('me-last').innerText = '—';
       document.getElementById('menu-history-sub').innerText = '尚無對局紀錄';
       return;
     }
@@ -1653,34 +1752,48 @@ async function loadHistory(){
     listEl.innerHTML = rows;
 
     renderStats(history.length, wins);
-    renderFeed(history);
   } catch (error) {
     listEl.innerHTML = '<div class="empty" style="color:var(--rust)">戰績載入失敗，請檢查連線。</div>';
-    document.getElementById('feed-list').innerHTML = '<li><span style="color:var(--rust)">戰報載入失敗，請檢查連線。</span></li>';
   }
 }
 
 function renderStats(total, wins){
   const rate = total ? Math.round((wins / total) * 100) : 0;
-  document.getElementById('win-rate').innerText = `${rate}%`;
-  document.getElementById('total-games').innerText = total;
-  document.getElementById('total-wins').innerText = wins;
-  document.getElementById('total-loses').innerText = total - wins;
-
-  document.getElementById('h-total').innerText = `${total} 場`;
-  document.getElementById('h-rate').innerText = `${rate}%`;
+  /* 弧長＝佔比；0 時圓頭線帽仍會畫出一個點，直接藏起來 */
+  const loseRate = total ? 100 - rate : 0;
+  for (const [id, pct] of [['me-rate-arc', rate], ['me-win-arc', rate], ['me-lose-arc', loseRate]]) {
+    const arc = document.getElementById(id);
+    arc.style.strokeDasharray = `${pct} 100`;
+    arc.style.opacity = pct ? 1 : 0;
+  }
+  /* 敗場段從勝場段的終點接著畫 */
+  document.getElementById('me-lose-arc').style.strokeDashoffset = -rate;
 
   document.getElementById('me-total').innerText = total;
-  document.getElementById('me-wl').innerText = `${wins} / ${total - wins}`;
-  document.getElementById('me-rate').innerText = `${rate}%`;
+  document.getElementById('me-wins').innerText = wins;
+  document.getElementById('me-loses').innerText = total - wins;
+  document.getElementById('me-rate').innerText = rate;
   document.getElementById('menu-history-sub').innerText = `${total} 場對局 ・ 勝率 ${rate}%`;
 }
 
-function renderFeed(history){
-  const latest = history.slice(-3).reverse();
-  document.getElementById('feed-list').innerHTML = latest.map(r => `
-    <li><span><b>${esc(r.winner)}</b> 以 ${esc(String(r.winScore))} 格圍地獲勝</span><em>${esc(String(r.date).split(' ')[0] || '')}</em></li>`).join('');
-  document.getElementById('me-last').innerText = latest.length ? latest[0].winner : '—';
+/* 側欄兩張卡片顯示全站統整數據（所有玩家），不是自己的戰績 */
+async function loadGlobalStats(){
+  const feed = document.getElementById('feed-list');
+  try {
+    const res = await fetch(`${API_URL}/api/global_stats`);
+    const g = await res.json();
+    if (!g.success) throw new Error();
+    document.getElementById('g-total').innerText = g.totalGames;
+    document.getElementById('g-players').innerText = `${g.players} 人`;
+    document.getElementById('g-best').innerText = `${g.bestScore} 格`;
+    document.getElementById('g-avg').innerText = `${g.avgScore} 格`;
+    feed.innerHTML = g.latest.length
+      ? g.latest.slice(0, 3).map(r => `
+        <li><span><b>${esc(r.winner)}</b> 以 ${esc(String(r.winScore))} 格圍地獲勝</span><em>${esc(String(r.date).split(' ')[0] || '')}</em></li>`).join('')
+      : '<li><span>尚無戰報，開一局來寫下第一筆吧。</span></li>';
+  } catch (e) {
+    feed.innerHTML = '<li><span style="color:var(--rust)">戰報載入失敗，請檢查連線。</span></li>';
+  }
 }
 
 async function clearHistory(){
@@ -1739,12 +1852,12 @@ function initReplayBoard(){
   }
 }
 
+/* 覆盤可循環：最後一步再按「下一步」回到第一步，第一步按「上一步」跳到最後一步 */
 function changeReplayStep(delta){
-  const newIndex = currentStepIndex + delta;
-  if (newIndex >= 0 && newIndex < currentReplayData.length) {
-    currentStepIndex = newIndex;
-    renderReplayStep();
-  }
+  const n = currentReplayData.length;
+  if (n < 2) return;
+  currentStepIndex = (currentStepIndex + delta + n) % n;
+  renderReplayStep();
 }
 
 function renderReplayStep(){
@@ -1761,6 +1874,14 @@ function renderReplayStep(){
     const [wr, wc] = wKey.split(',').map(Number);
     const wEl = boardEl.querySelector(`[data-r="${wr}"][data-c="${wc}"]`);
     if (wEl) wEl.classList.add('wall-placed', `wall-${color}`);
+  });
+
+  /* 交叉點：四周有兩道以上的牆接進來，就把這格也填滿，牆才會連成一條沒有空隙 */
+  const wallMap = new Map(stepData.walls);
+  boardEl.querySelectorAll('.intersection').forEach(el => {
+    const r = +el.dataset.r, c = +el.dataset.c;
+    const joined = [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].map(([y,x]) => wallMap.get(`${y},${x}`)).filter(Boolean);
+    if (joined.length >= 2) el.classList.add('wall-placed', `wall-${joined[0]}`);
   });
 
   // 動態比對破牆：上一步有、這一步沒有的牆，標記為被打破
@@ -1787,15 +1908,16 @@ function renderReplayStep(){
 
   document.getElementById('replay-step-display').innerText = `${currentStepIndex} / ${currentReplayData.length - 1}`;
   const prev = document.getElementById('btn-prev-step'), next = document.getElementById('btn-next-step');
-  prev.disabled = (currentStepIndex === 0);
-  next.disabled = (currentStepIndex === currentReplayData.length - 1);
-  prev.style.opacity = prev.disabled ? '.45' : '1';
-  next.style.opacity = next.disabled ? '.45' : '1';
+  const last = currentReplayData.length - 1;
+  prev.disabled = next.disabled = (last < 1);
+  prev.style.opacity = next.style.opacity = prev.disabled ? '.45' : '1';
+  /* 讓循環看得出來：在頭尾時按鈕文字提示會跳到哪裡 */
+  prev.innerText = currentStepIndex === 0 ? '跳到最後' : '上一步';
+  next.innerText = currentStepIndex === last ? '回到開頭' : '下一步';
 }
 
 /* ═════════ 好友系統 ═════════ */
 async function openFriendList(){
-  closeModal('me-modal');
   openModal('friends-modal');
   document.getElementById('friend-list-render').innerHTML = '<p class="empty">載入中…</p>';
   await fetchFriends();
@@ -1906,8 +2028,8 @@ async function handleFriendReq(requesterId, action){
 }
 
 function toggleMusic(){
-  muteBtn.classList.toggle('off');
-  const off = muteBtn.classList.contains('off');
+  MUSIC_OFF = !MUSIC_OFF;
+  const off = MUSIC_OFF;
   localStorage.setItem('wallGoMusic', off ? 'off' : 'on');
   if (off) stopMusic(); else startMusic();
   toast(off ? '音樂與音效已關閉' : '音樂與音效已開啟');
@@ -1915,8 +2037,8 @@ function toggleMusic(){
 }
 
 function syncSettingsUI(){
-  document.getElementById('set-anim').innerText = REDUCED ? '關閉' : '開啟';
-  document.getElementById('set-music').innerText = muteBtn.classList.contains('off') ? '關閉' : '開啟';
+  document.getElementById('set-anim').setAttribute('aria-checked', String(!REDUCED));
+  document.getElementById('set-music').setAttribute('aria-checked', String(!MUSIC_OFF));
 }
 
 /* ═════════ 小工具 ═════════ */
@@ -1928,7 +2050,7 @@ function esc(str){
 window.onload = () => {
   checkLogin();
   syncSettingsUI();
-  if (currentUser) loadHistory();
+  if (currentUser) { loadHistory(); loadGlobalStats(); }
 };
 </script>
 </body>
