@@ -98,6 +98,12 @@
             top: var(--hud-top); bottom: var(--hud-bot); left: 0; right: 0;
             display: grid; place-items: center;
             container-type: size;
+            transition: right .4s cubic-bezier(.175, .885, .32, 1.275);
+        }
+        /* 聊天室打開時，棋盤與上方回合列讓出右側空間，不被蓋住（手機版聊天室直接疊在上面） */
+        @media (min-width: 721px) {
+            body.chat-open .stage { right: calc(344px + var(--edge)); }
+            body.chat-open .hud-top { left: calc((100vw - 344px - var(--edge)) / 2); }
         }
         .board {
             width: min(100cqh, 100cqw - 2 * var(--side));
@@ -175,12 +181,8 @@
         .highlight { background-color: var(--sky) !important; cursor: pointer; box-shadow: inset 0 0 0 3px var(--outline); }
         .highlight-wall:not(.wall-placed)::after { background: var(--pink); opacity: .75; outline: 2px solid var(--outline); outline-offset: -1px; }
         .highlight-wall:not(.wall-placed):hover::after { background: var(--yellow); opacity: 1; }
-        /* 破牆階段：可拆的牆整道換成紫色並輕微閃爍；滑過時變亮紫 */
-        .wall-placed.highlight-wall { --w-body: #8a5ad6; --w-side: #5b3797; }
-        .wall-placed.highlight-wall::after { animation: breakable 0.9s ease-in-out infinite alternate; }
-        .wall-placed.highlight-wall:hover { --w-body: #b38cf5; --w-side: #7a52c0; }
-        .wall-placed.highlight-wall:hover::after { animation: none; }
-        @keyframes breakable { from { opacity: 1; } to { opacity: .55; } }
+        /* 破牆階段：別人的牆變灰，自己的牆維持原色（就是可以拆的那些） */
+        .wall-placed.wall-dim { --w-body: #c9c3b6; --w-side: #a8a194; }
 
         /* 小棋子圖示：外層開 container，讓 .piece 的 cqw 單位跟著縮放 */
         .token { container-type: inline-size; display: flex; align-items: center; justify-content: center; flex: none; }
@@ -209,6 +211,7 @@
             top: var(--edge); left: 50%; transform: translateX(-50%);
             display: flex; align-items: flex-start; gap: 10px;
             width: max-content; max-width: calc(100vw - 24px);
+            transition: left .4s cubic-bezier(.175, .885, .32, 1.275);
         }
         .phase-flag {
             position: relative; width: 44px; padding: 10px 0 18px; margin-top: calc(-1 * var(--edge));
@@ -432,7 +435,7 @@
                 <span class="turn-time">{{ timeOf(curColor) }}<small>秒</small></span>
             </div>
             <button class="big-btn breaker top-breaker" :disabled="!canUseBreaker" :class="{ on: S.phase === 'wall_breaking' }"
-                    @click="toggleWallBreaker"
+                    @click="S.phase === 'wall_breaking' ? toggleWallBreaker() : (S.confirmBreak = true)"
                     :title="S.phase === 'wall_breaking' ? '取消破牆' : '使用破牆'" aria-label="使用破牆">
                 <svg v-if="S.phase !== 'wall_breaking'" class="ico" viewBox="0 0 24 24" style="fill: currentColor; stroke-width: 1.2"><path d="M1.5 6.5H10.4L8.4 10l2 2.6-1.4 4.9H1.5z"/><path d="M22.5 6.5H13.9l-2 3.5 2 2.6-1.4 4.9h10z"/></svg>
                 <svg v-else class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -444,7 +447,7 @@
             <button class="round-btn" @click="backToMenu" title="回首頁" aria-label="回首頁">
                 <svg class="ico" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10.5V19h11v-8.5"/><path d="M10 19v-4.5h4V19"/></svg>
             </button>
-            <button class="round-btn" @click="resetGame(true)" title="重新開始" aria-label="重新開始">
+            <button class="round-btn" @click="S.confirmReset = true" title="重新開始" aria-label="重新開始">
                 <svg class="ico" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/></svg>
             </button>
             <button v-if="S.result" class="round-btn" @click="S.showResult = true" title="查看結算" aria-label="查看結算">
@@ -500,6 +503,33 @@
         <!-- ═════ 提示 ═════ -->
         <transition name="fade">
             <div v-if="S.toast" class="toast" role="status">{{ S.toast }}</div>
+        </transition>
+
+        <!-- ═════ 破牆確認 ═════ -->
+        <transition name="fade">
+            <div v-if="S.confirmBreak" class="modal-back" @click.self="S.confirmBreak = false">
+                <div class="card result" role="alertdialog" aria-label="確認破牆">
+                    <h2 style="margin-bottom: 14px">確認要破牆嗎？</h2>
+                    <div class="result-actions">
+                        <button class="primary" style="flex: 2" @click="S.confirmBreak = false; toggleWallBreaker()">對，我要使用</button>
+                        <button @click="S.confirmBreak = false">誤觸</button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- ═════ 重新開始確認 ═════ -->
+        <transition name="fade">
+            <div v-if="S.confirmReset" class="modal-back" @click.self="S.confirmReset = false">
+                <div class="card result" role="alertdialog" aria-label="確認重新開始">
+                    <h2>重新開始？</h2>
+                    <p class="reason">{{ isOnline ? '目前這局會作廢，房間裡所有玩家都會一起重新開始。' : '目前這局的進度會全部清除。' }}</p>
+                    <div class="result-actions">
+                        <button class="primary" style="flex: 2" @click="S.confirmReset = false; resetGame(true)">重新開始</button>
+                        <button @click="S.confirmReset = false">取消</button>
+                    </div>
+                </div>
+            </div>
         </transition>
 
         <!-- ═════ 結算 ═════ -->
@@ -571,7 +601,7 @@
         // 介面狀態
         chat: [], chatInput: '', chatOpen: false, unread: false,
         micOn: false, fullscreen: false,
-        toast: '', result: null, showResult: false
+        toast: '', result: null, showResult: false, confirmReset: false, confirmBreak: false
     });
 
     let moveHistory = [];
@@ -1155,6 +1185,7 @@
     function toggleChat() {
         S.chatOpen = !S.chatOpen;
         if (S.chatOpen) S.unread = false;
+        document.body.classList.toggle('chat-open', S.chatOpen);
     }
     function toggleFullscreen() {
         if (document.fullscreenElement) document.exitFullscreen();
@@ -1162,7 +1193,7 @@
     }
     document.addEventListener('fullscreenchange', () => { S.fullscreen = !!document.fullscreenElement; });
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') { S.showResult = false; if (S.chatOpen) toggleChat(); }
+        if (e.key === 'Escape') { S.showResult = false; S.confirmReset = false; S.confirmBreak = false; if (S.chatOpen) toggleChat(); }
     });
 
     // ══════════ Vue ══════════
@@ -1213,7 +1244,10 @@
                             type = 'intersection'; cls.push('intersection');
                         } else {
                             type = 'wall'; cls.push(r % 2 === 1 ? 'wall-h' : 'wall-v');
-                            if (S.walls.has(k)) cls.push('wall-placed', 'wall-' + S.walls.get(k));
+                            if (S.walls.has(k)) {
+                                cls.push('wall-placed', 'wall-' + S.walls.get(k));
+                                if (S.phase === 'wall_breaking' && S.walls.get(k) !== cc) cls.push('wall-dim');
+                            }
                             if (wallSet.has(k)) cls.push('highlight-wall');
                         }
                         out.push({ key: k, r, c, type, cls, piece });

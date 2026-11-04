@@ -272,6 +272,9 @@ body{
 .btn.gold{background:var(--yellow);color:var(--outline);font-weight:700}
 .btn.gold:hover{background:#f7ce62}
 .btn.gold:disabled{opacity:.42;cursor:not-allowed;transform:none}
+.btn.gold.busy{opacity:1;cursor:progress}
+.btn.gold.busy::after{content:'';display:inline-block;width:1.1em;text-align:left;animation:busyDots 1s steps(4) infinite}
+@keyframes busyDots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
 .btn.danger{background:var(--red);color:var(--cream-hi);font-weight:600}
 .btn.danger:hover{background:#e5613e}
 .btn + .btn{margin-top:12px}
@@ -318,6 +321,16 @@ body{
   border:4px solid var(--red);pointer-events:none;
   animation:gatePulse 1.8s cubic-bezier(.2,.6,.4,1) infinite}
 @keyframes gatePulse{0%{transform:scale(1);opacity:.75}100%{transform:scale(1.6);opacity:0}}
+/* 跳過開場：開場期間才出現，按鈕或空白鍵都可以 */
+.intro-skip{position:fixed;right:28px;bottom:28px;z-index:21;display:none;align-items:center;gap:10px;
+  padding:10px 14px 10px 20px;border-radius:999px;border:3px solid var(--outline);
+  background:var(--cream-hi);color:var(--outline);cursor:pointer;
+  font:700 14px/1 var(--font-sans,'Archivo',sans-serif);letter-spacing:.16em;
+  box-shadow:0 4px 0 rgba(27,27,27,.2);transition:background .16s,translate .14s}
+.intro-skip.on{display:flex}
+.intro-skip:hover{background:var(--yellow);translate:0 -2px}
+.intro-skip kbd{font:600 11px/1 var(--font-sans,'Archivo',sans-serif);letter-spacing:.06em;
+  padding:5px 8px;border-radius:7px;border:2px solid var(--outline);background:var(--cream)}
 
 .auth{position:fixed;inset:0;display:none;place-items:center;padding:20px;z-index:15;overflow-y:auto}
 .auth.on{display:grid}
@@ -762,6 +775,7 @@ body{
 <button class="intro-gate" id="intro-gate" title="開始" aria-label="開始">
   <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
 </button>
+<button class="intro-skip" id="intro-skip" onclick="skipIntro()" aria-label="Skip intro">SKIP <kbd>Space</kbd></button>
 
 <div class="toast" id="toast"></div>
 
@@ -1212,6 +1226,7 @@ function step(now){
       const wk=cageKeys[3], info=walls.get(wk);
       if(info){ walls.delete(wk); smashWall(wk, info, now); }
       if(typeof onIntroBreak==='function') onIntroBreak();
+      showSkip(false);                 /* 牆一破、登入卡開始滑入，就沒有東西可跳過了 */
     }
     if(el>330){ phase='introFree'; t0=now; }
   }
@@ -1225,6 +1240,7 @@ function step(now){
       /* 不重置棋盤，就從這個局面接著下 */
       introHero.x += 1; introHero.dx = introHero.x;
       introHero=null; armAlpha=0; introStage=null; phase='idle'; t0=now;
+      showSkip(false);
     }
   }
   else if(phase==='break' && el>900){ startMove(now); }
@@ -1383,7 +1399,36 @@ function armIntroGate(){
   };
   ['pointerdown','keydown'].forEach(ev=>
     addEventListener(ev, go, { once:true, passive:true }));
+  showSkip(true);
 }
+
+/* ── 跳過開場 ── */
+function showSkip(on){
+  const b=document.getElementById('intro-skip');
+  if(b) b.classList.toggle('on', on);
+}
+function skipIntro(){
+  if(introStage===null) return;
+  const gate=document.getElementById('intro-gate');
+  if(gate) gate.classList.remove('on');
+  /* 籠子還沒被打破就直接拆掉，主角才不會被永遠關在裡面 */
+  if(!introSmashed) cageKeys.forEach(k=>walls.delete(k));
+  if(introHero){ introHero.dx=introHero.x; introHero.dy=introHero.y; }
+  introHero=null; armAlpha=0; introSmashed=true; shake=0; impact=null;
+  introStage=null;
+  /* 正在演開場專屬的段落就收掉；一般的移動／建牆讓它自然走完 */
+  if(phase.startsWith('intro')){ phase='idle'; t0=performance.now(); }
+  showSkip(false);
+  /* 登入卡還沒出現：直接就定位，不跑滑入動畫 */
+  const el=document.getElementById('auth-page');
+  if(el.classList.contains('intro-wait')){
+    el.classList.remove('intro-wait');
+    setLayout(1, true);
+  }
+}
+addEventListener('keydown', e=>{
+  if(e.code==='Space' && introStage!==null && !introSmashed){ e.preventDefault(); skipIntro(); }
+});
 
 initBg();
 if(REDUCED) drawStatic();
@@ -1536,6 +1581,13 @@ function switchAuthTab(type){
   else { tabs[1].classList.add('active'); document.getElementById('form-register').classList.add('active'); }
 }
 
+/* 送出登入／註冊時，按鈕立刻給回饋並鎖住，避免等待伺服器時像沒反應、或被重複送出 */
+function setBusy(btn, busy, label){
+  if(!btn) return;
+  if(busy){ btn.dataset.label = btn.textContent; btn.textContent = label; btn.disabled = true; btn.classList.add('busy'); }
+  else { btn.textContent = btn.dataset.label || btn.textContent; btn.disabled = false; btn.classList.remove('busy'); }
+}
+
 async function performLogin(){
   const id = document.getElementById('login-id').value.trim();
   const pwd = document.getElementById('login-pwd').value.trim();
@@ -1543,6 +1595,9 @@ async function performLogin(){
   if (!id || !pwd) return toast('Please enter both your ID and password.');
   if (!id.startsWith('#')) return toast('Invalid ID — it must start with # (e.g. #1234).');
 
+  const btn = document.querySelector('#form-login .btn.gold');
+  if (btn && btn.disabled) return;
+  setBusy(btn, true, 'Logging in');
   try {
     const response = await fetch(`${API_URL}/api/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1557,6 +1612,7 @@ async function performLogin(){
       loadHistory(); loadGlobalStats();
     } else toast(result.message);
   } catch (error) { toast('Can\'t reach the server. Please make sure the backend is running.'); }
+  finally { setBusy(btn, false); }
 }
 
 async function performRegister(){
@@ -1566,6 +1622,9 @@ async function performRegister(){
   if (!name || !pwd) return toast('Please enter both a nickname and a password.');
   let randomId = '#' + Math.floor(1000 + Math.random() * 9000);
 
+  const btn = document.querySelector('#form-register .btn.gold');
+  if (btn && btn.disabled) return;
+  setBusy(btn, true, 'Signing up');
   try {
     const response = await fetch(`${API_URL}/api/register`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1582,6 +1641,7 @@ async function performRegister(){
       loadHistory(); loadGlobalStats();
     } else toast(result.message);
   } catch (error) { toast('Can\'t reach the server. Please make sure the backend is running.'); }
+  finally { setBusy(btn, false); }
 }
 
 function handleForgotPassword(){
