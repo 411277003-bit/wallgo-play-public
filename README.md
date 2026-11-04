@@ -7,7 +7,7 @@
 ```
 .
 ├── index.html          # 大廳：登入註冊、房間、好友、戰績、覆盤
-├── game.html           # 對局頁：棋盤、計時、聊天室、語音
+├── game.html           # 對局頁（Vue 3，CDN 載入免建置）：棋盤、計時、聊天室、語音
 ├── app.py              # Flask + Socket.IO 伺服器（房間、對局同步、帳號 API）
 ├── requirements.txt    # Python 相依套件
 ├── assets/             # 靜態資源（背景音樂）

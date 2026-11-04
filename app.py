@@ -39,7 +39,7 @@ def register():
     password = data.get('password')
 
     if users_col.find_one({"id": user_id}):
-        return jsonify({"success": False, "message": "此 ID 已被註冊！"})
+        return jsonify({"success": False, "message": "This ID is already taken."})
 
     new_user = {
         "id": user_id,
@@ -52,7 +52,7 @@ def register():
     
     return jsonify({
         "success": True, 
-        "message": "註冊成功！",
+        "message": "Sign-up successful!",
         "user": {"id": user_id, "name": username, "avatar": username[0].upper()}
     })
 
@@ -68,13 +68,13 @@ def login():
             users_col.update_one({"id": user_id}, {"$set": {"is_online": 1}})
             return jsonify({
                 "success": True, 
-                "message": "登入成功",
+                "message": "Logged in.",
                 "user": {"id": user['id'], "name": user['username'], "avatar": user['avatar']}
             })
         else:
-            return jsonify({"success": False, "message": "密碼錯誤"})
+            return jsonify({"success": False, "message": "Incorrect password."})
     else:
-        return jsonify({"success": False, "message": "找不到此玩家 ID"})
+        return jsonify({"success": False, "message": "Player ID not found."})
 
 @app.route('/api/reset_password', methods=['POST'])
 def reset_password():
@@ -85,9 +85,9 @@ def reset_password():
     user = users_col.find_one({"id": user_id})
     if user:
         users_col.update_one({"id": user_id}, {"$set": {"password": new_password}})
-        return jsonify({"success": True, "message": "密碼重設成功！請使用新密碼重新登入。"})
+        return jsonify({"success": True, "message": "Password reset! Please log in with your new password."})
     else:
-        return jsonify({"success": False, "message": "找不到此玩家 ID！請確認輸入正確。"})
+        return jsonify({"success": False, "message": "Player ID not found. Please check and try again."})
 
 @app.route('/api/update_profile', methods=['POST'])
 def update_profile():
@@ -176,7 +176,7 @@ def send_friend_request():
 
     receiver = users_col.find_one({"id": receiver_id})
     if not receiver:
-        return jsonify({"success": False, "message": "找不到此玩家 ID！請確認輸入正確。"})
+        return jsonify({"success": False, "message": "Player ID not found. Please check and try again."})
 
     existing = friends_col.find_one({
         "$or": [
