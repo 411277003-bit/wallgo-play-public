@@ -643,6 +643,11 @@ def handle_game_action(data):
         state['playerTimes'] = data.get('playerTimes', state['playerTimes'])
         
         check_end_game(room_code)
+
+        # 重新開始後計時協程可能已因上一局結束而停止，需要重新啟動
+        job = state.get('timer_job')
+        if state['phase'] != 'game_over' and (job is None or job.dead):
+            state['timer_job'] = gevent.spawn(room_timer_loop, room_code)
         
         # 下發給所有人 (包含操作者自己，確保強制覆蓋一致狀態)
         emit('update_board', get_clean_state(state), to=room_code)

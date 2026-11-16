@@ -104,6 +104,8 @@
         @media (min-width: 721px) {
             body.chat-open .stage { right: calc(344px + var(--edge)); }
             body.chat-open .hud-top { left: calc((100vw - 344px - var(--edge)) / 2); }
+            /* 右下的全螢幕／麥克風／聊天鈕也要讓位，否則會被聊天室蓋住 */
+            body.chat-open .hud-br { right: calc(344px + var(--edge) * 2); }
         }
         .board {
             width: min(100cqh, 100cqw - 2 * var(--side));
@@ -261,6 +263,7 @@
         .hud-br {
             right: var(--edge); bottom: var(--edge);
             display: flex; flex-direction: column; gap: 14px;
+            transition: right .4s cubic-bezier(.175, .885, .32, 1.275);
         }
         .big-btn {
             position: relative; width: 72px; height: 72px; padding: 0; border-radius: 50%;
@@ -702,8 +705,9 @@
 
         socket.on('update_board', (data) => {
             S.pieces = data.pieces;
-            S.walls = new Map(data.walls);
-            S.territories = new Map(data.territories);
+            // 伺服器回傳的牆是 [{r, c, color}]，前端用的是 [["r,c", color]]，兩種都接受
+            S.walls = new Map((data.walls || []).map(w => Array.isArray(w) ? w : [key(w.r, w.c), w.color]));
+            S.territories = new Map(data.territories || []);
             S.phase = data.phase;
             S.turnIndex = data.turnIndex;
             S.movedPieceIndex = data.movedPieceIndex;
@@ -718,6 +722,11 @@
             }
             saveHistoryStep();
             autoCheckEndGame(false);
+        });
+
+        // 伺服器是計時的權威，每秒校正一次剩餘秒數
+        socket.on('sync_time', (data) => {
+            if (data && data.playerTimes) S.playerTimes = data.playerTimes;
         });
 
         socket.on('receive_chat', (data) => {
@@ -775,26 +784,14 @@
             const cc = currentColor();
             S.playerTimes[cc]--;
 
+            // 連線對局的逾時由伺服器代為結算，前端只負責顯示倒數，避免雙方各自代打造成不同步
+            if (isOnline) {
+                if (S.playerTimes[cc] < 0) S.playerTimes[cc] = 0;
+                return;
+            }
             if (S.playerTimes[cc] === 0) {
-                if (isOnline) {
-                    if (cc === S.myOnlineColor) {
-                        systemMsg('⏳ 時間耗盡！AI 已介入代為下棋與建牆。');
-                        executeAILogic(cc);
-                        broadcastGameState();
-                    }
-                } else {
-                    systemMsg(`⏳ ${getDisplayName(cc)}${suffixOf(cc)} 時間耗盡！系統已代為執行。`);
-                    executeAILogic(cc);
-                }
-            } else if (S.playerTimes[cc] === -3 && isOnline) {
-                const len = S.phase === 'placement' ? S.placementQueue.length : S.movementOrder.length;
-                const nextIdx = (S.turnIndex + 1) % len;
-                const nextPlayer = S.phase === 'placement' ? S.placementQueue[nextIdx] : S.movementOrder[nextIdx];
-                if (S.myOnlineColor === nextPlayer) {
-                    appendChatMessage('系統', 'red', `⚠️ 偵測到 ${getDisplayName(cc)} 斷線或無回應，由系統強制接管！`);
-                    executeAILogic(cc);
-                    broadcastGameState();
-                }
+                systemMsg(`⏳ ${getDisplayName(cc)}${suffixOf(cc)} 時間耗盡！系統已代為執行。`);
+                executeAILogic(cc);
             }
         }, 1000);
     }
