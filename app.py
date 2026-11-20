@@ -260,7 +260,7 @@ def handle_friend_request():
 boardSize = 13
 allColors = ['red', 'blue', 'yellow', 'green']
 
-def init_game_state(room_code, player_count):
+def init_game_state(room_code, player_count, rules=1):
     activeColors = allColors[:player_count]
     placementQueue = activeColors + activeColors[::-1]
     
@@ -271,6 +271,8 @@ def init_game_state(room_code, player_count):
         playerTimes[c] = 90
         
     state = {
+        'rules': 2 if rules == 2 else 1,   # 1 = 原版；2 = 每人一圓一方、破牆限棋子旁
+        'moveDir': None,
         'phase': 'placement',
         'turnIndex': 0,
         'activeColors': activeColors,
@@ -314,6 +316,24 @@ def get_valid_moves(pieces, walls, startR, startC):
                     if not has_wall_between(walls, startR, startC, r, c):
                         valid_moves.append({'r': r, 'c': c})
     return valid_moves
+
+def next_shape(state, color):
+    """規則 2：每人先放圓形、再放方形；規則 1 沒有形狀。"""
+    if state.get('rules') != 2:
+        return None
+    has_circle = any(p['color'] == color and p.get('shape') == 'circle' for p in state['pieces'])
+    return 'square' if has_circle else 'circle'
+
+def breakable_walls(state, color):
+    """可以拆的牆。規則 1：自己蓋的牆；規則 2：自己棋子四周的牆（不論誰蓋的）。"""
+    if state.get('rules') != 2:
+        return [w for w in state['walls'] if w['color'] == color]
+    around = set()
+    for p in state['pieces']:
+        if p['color'] == color:
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                around.add((p['r'] + dr, p['c'] + dc))
+    return [w for w in state['walls'] if (w['r'], w['c']) in around]
 
 def get_valid_walls(walls, pR, pC):
     valid_walls = []
@@ -364,7 +384,11 @@ def force_ai_move(room_code):
                     empty_cells.append({'r': r, 'c': c})
         if empty_cells:
             choice = random.choice(empty_cells)
-            state['pieces'].append({'color': color, 'r': choice['r'], 'c': choice['c']})
+            piece = {'color': color, 'r': choice['r'], 'c': choice['c']}
+            shape = next_shape(state, color)
+            if shape:
+                piece['shape'] = shape
+            state['pieces'].append(piece)
         
         state['turnIndex'] += 1
         if state['turnIndex'] >= len(state['placementQueue']):
@@ -388,7 +412,7 @@ def force_ai_move(room_code):
         my_pieces = [{'idx': i, **p} for i, p in enumerate(state['pieces']) if p['color'] == color]
         total_mobility = sum(len(get_valid_moves(state['pieces'], state['walls'], p['r'], p['c'])) for p in my_pieces)
         
-        my_walls = [w for w in state['walls'] if w['color'] == color]
+        my_walls = breakable_walls(state, color)
         if state['playersInfo'][color]['hasBreaker'] and my_walls and (total_mobility <= 2 or state['phase'] == 'wall_breaking'):
             w_to_break = random.choice(my_walls)
             state['walls'].remove(w_to_break)
@@ -436,6 +460,7 @@ def force_ai_move(room_code):
 
     # 恢復秒數並通知所有人
     state['playerTimes'][color] = 90
+    state['version'] = state.get('version', 0) + 1
     check_end_game(room_code)
     socketio.emit('update_board', get_clean_state(state), to=room_code)
     socketio.emit('receive_chat', {'user_name': '系統', 'color': 'yellow', 'message': f'⏳ {color} 逾時，伺服器已強制代為結算。'}, to=room_code)
@@ -493,7 +518,7 @@ def check_end_game(room_code):
                     
     anyPlayerCanMove = False
     for color in state['activeColors']:
-        my_walls = [w for w in state['walls'] if w['color'] == color]
+        my_walls = breakable_walls(state, color)
         if state['playersInfo'][color]['hasBreaker'] and my_walls:
             anyPlayerCanMove = True
             break
@@ -545,8 +570,9 @@ def handle_create_room(data):
     room_code = data.get('room_code')
     user_info = data.get('user_info')
     join_room(room_code)
-    rooms[room_code] = {'players': [user_info], 'status': 'waiting'}
-    emit('room_created', {'room_code': room_code, 'players': rooms[room_code]['players']})
+    rules = 2 if data.get('rules') == 2 else 1
+    rooms[room_code] = {'players': [user_info], 'status': 'waiting', 'rules': rules}
+    emit('room_created', {'room_code': room_code, 'players': rooms[room_code]['players'], 'rules': rules})
 
 @socketio.on('join_room')
 def handle_join_room(data):
@@ -563,7 +589,8 @@ def handle_join_room(data):
             if not any(p['id'] == user_info['id'] for p in rooms[room_code]['players']):
                 join_room(room_code)
                 rooms[room_code]['players'].append(user_info)
-            emit('room_updated', {'room_code': room_code, 'players': rooms[room_code]['players']}, to=room_code)
+            emit('room_updated', {'room_code': room_code, 'players': rooms[room_code]['players'],
+                                  'rules': rooms[room_code].get('rules', 1)}, to=room_code)
     else:
         emit('join_error', {'message': '找不到此房間！請確認代碼是否正確。'})
 
@@ -579,7 +606,8 @@ def handle_leave_room(data):
                 rooms[room_code]['game_state']['timer_job'].kill()
             del rooms[room_code]
         else:
-            emit('room_updated', {'room_code': room_code, 'players': rooms[room_code]['players']}, to=room_code)
+            emit('room_updated', {'room_code': room_code, 'players': rooms[room_code]['players'],
+                                  'rules': rooms[room_code].get('rules', 1)}, to=room_code)
 
 @socketio.on('start_game')
 def handle_start_game(data):
@@ -589,68 +617,132 @@ def handle_start_game(data):
         player_count = len(rooms[room_code]['players'])
         
         # 💡 啟動後端權威狀態與計時器
-        rooms[room_code]['game_state'] = init_game_state(room_code, player_count)
+        rules = rooms[room_code].get('rules', 1)
+        rooms[room_code]['game_state'] = init_game_state(room_code, player_count, rules)
         rooms[room_code]['game_state']['timer_job'] = gevent.spawn(room_timer_loop, room_code)
         
-        emit('game_started', {'room_code': room_code, 'player_count': player_count}, to=room_code)
+        emit('game_started', {'room_code': room_code, 'player_count': player_count, 'rules': rules}, to=room_code)
+
+# sid → (room_code, 顯示名稱, 是否觀戰)，斷線時用來通知房內其他人
+sid_info = {}
+
+def spectator_names(room_code):
+    return [n for (rc, n, spec) in sid_info.values() if rc == room_code and spec]
+
+@socketio.on('spectate_room')
+def handle_spectate_room(data):
+    """大廳按「觀戰」：只確認房間存在且已開局，真正入房在 game.html 的 join_game_room。"""
+    room_code = data.get('room_code')
+    room = rooms.get(room_code)
+    if not room:
+        emit('join_error', {'message': '找不到此房間！請確認代碼是否正確。'})
+    elif room.get('status') != 'playing':
+        emit('join_error', {'message': '這個房間還沒開始對局，可以直接按「加入」入座。'})
+    else:
+        emit('spectate_ok', {'room_code': room_code, 'player_count': len(room['players']), 'rules': room.get('rules', 1)})
 
 @socketio.on('join_game_room')
 def handle_join_game_room(data):
+    """進入對局頁（含斷線重連）。玩家拿到自己的顏色，其他人一律當觀戰者。"""
     room_code = data.get('room_code')
     user_id = data.get('user_id')
+    user_name = data.get('user_name') or '訪客'
     join_room(room_code)
-    
+
     my_color = None
-    room_players = {} 
-    
+    room_players = {}
+    current_state = None
+
     if room_code in rooms:
-        players = rooms[room_code]['players']
         colors = ['red', 'blue', 'yellow', 'green']
-        
-        for i, p in enumerate(players):
+        for i, p in enumerate(rooms[room_code]['players']):
             if i < len(colors):
                 room_players[colors[i]] = p['name']
                 if p['id'] == user_id:
                     my_color = colors[i]
-                    
-        # 將當前後端狀態一併下發給剛加入的玩家
-        current_state = None
         if 'game_state' in rooms[room_code]:
             current_state = get_clean_state(rooms[room_code]['game_state'])
-    
-    emit('init_game', {'my_color': my_color, 'room_players': room_players, 'initial_state': current_state})
+
+    is_spectator = bool(data.get('spectate')) or (room_code in rooms and my_color is None)
+    was_known = request.sid in sid_info
+    sid_info[request.sid] = (room_code, user_name, is_spectator)
+
+    emit('init_game', {'my_color': my_color, 'room_players': room_players,
+                       'initial_state': current_state, 'spectator': is_spectator})
+    if is_spectator and not was_known:
+        emit('receive_chat', {'user_name': '系統', 'color': 'yellow', 'message': f'👀 {user_name} 進入觀戰'},
+             to=room_code, include_self=False)
+    emit('spectators_updated', {'names': spectator_names(room_code)}, to=room_code)
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    info = sid_info.pop(request.sid, None)
+    if not info:
+        return
+    room_code, user_name, is_spectator = info
+    # 讓房內其他人關掉跟這個人的語音連線
+    emit('voice_signal', {'from': request.sid, 'type': 'bye'}, to=room_code)
+    if is_spectator:
+        emit('spectators_updated', {'names': spectator_names(room_code)}, to=room_code)
+
+@socketio.on('voice_signal')
+def handle_voice_signal(data):
+    """WebRTC 語音的信令轉送：有 to 就單送給那個人，沒有就廣播給房內其他人。"""
+    room_code = data.get('room_code')
+    payload = {'from': request.sid, 'type': data.get('type'), 'data': data.get('data')}
+    target = data.get('to')
+    if target:
+        emit('voice_signal', payload, to=target)
+    elif room_code:
+        emit('voice_signal', payload, to=room_code, include_self=False)
 
 @socketio.on('game_action')
 def handle_game_action(data):
     """
-    💡 前端不再全權負責廣播，前端只把動作更新上來
-    後端更新主狀態後，重新下發給所有人，確保全場同步！
+    前端把動作後的整盤狀態送上來，後端更新後轉發給房內其他人（含觀戰者）。
+    伺服器重啟、或連線斷掉重連後，房間資料／socket 房間成員都可能不見，這裡一併自我修復，
+    否則對方的棋步會一直收不到。
     """
     room_code = data.get('room_code')
-    if room_code in rooms and 'game_state' in rooms[room_code]:
-        state = rooms[room_code]['game_state']
-        
-        # 將前端發來的更新同步到後端記憶體
-        state['pieces'] = data.get('pieces', [])
-        state['walls'] = [{'r': int(k.split(',')[0]), 'c': int(k.split(',')[1]), 'color': v} for k, v in data.get('walls', [])]
-        state['territories'] = data.get('territories', [])
-        state['phase'] = data.get('phase')
-        state['turnIndex'] = data.get('turnIndex')
-        state['movedPieceIndex'] = data.get('movedPieceIndex')
-        state['selectedPieceIndex'] = data.get('selectedPieceIndex')
-        state['stepsTaken'] = data.get('stepsTaken')
-        state['playersInfo'] = data.get('playersInfo', state['playersInfo'])
-        state['playerTimes'] = data.get('playerTimes', state['playerTimes'])
-        
-        check_end_game(room_code)
+    if not room_code:
+        return
+    join_room(room_code)   # 重連後 socket 不在房間裡時補回去
 
-        # 重新開始後計時協程可能已因上一局結束而停止，需要重新啟動
-        job = state.get('timer_job')
-        if state['phase'] != 'game_over' and (job is None or job.dead):
-            state['timer_job'] = gevent.spawn(room_timer_loop, room_code)
-        
-        # 下發給所有人 (包含操作者自己，確保強制覆蓋一致狀態)
-        emit('update_board', get_clean_state(state), to=room_code)
+    room = rooms.setdefault(room_code, {'players': [], 'status': 'playing'})
+    if 'game_state' not in room:
+        room['game_state'] = init_game_state(room_code, len(data.get('playersInfo') or {}) or 2, data.get('rules', 1))
+        room['status'] = 'playing'
+    state = room['game_state']
+
+    state['pieces'] = data.get('pieces', [])
+    state['walls'] = [{'r': int(k.split(',')[0]), 'c': int(k.split(',')[1]), 'color': v} for k, v in data.get('walls', [])]
+    state['territories'] = data.get('territories', [])
+    state['phase'] = data.get('phase')
+    state['turnIndex'] = data.get('turnIndex')
+    state['movedPieceIndex'] = data.get('movedPieceIndex')
+    state['selectedPieceIndex'] = data.get('selectedPieceIndex')
+    state['stepsTaken'] = data.get('stepsTaken')
+    state['moveDir'] = data.get('moveDir')
+    if data.get('rules') in (1, 2):
+        state['rules'] = data['rules']
+    state['playersInfo'] = data.get('playersInfo', state['playersInfo'])
+    state['playerTimes'] = data.get('playerTimes', state['playerTimes'])
+    if data.get('activeColors'):
+        state['activeColors'] = data['activeColors']
+        state['placementQueue'] = data.get('placementQueue', state['placementQueue'])
+        state['movementOrder'] = data.get('movementOrder', state['movementOrder'])
+    state['version'] = state.get('version', 0) + 1
+
+    check_end_game(room_code)
+
+    # 重新開始後計時協程可能已因上一局結束而停止，需要重新啟動
+    job = state.get('timer_job')
+    if state['phase'] != 'game_over' and (job is None or job.dead):
+        state['timer_job'] = gevent.spawn(room_timer_loop, room_code)
+
+    # 操作者本機已經是這個狀態，只轉發給其他人；回送舊狀態給自己反而會在連點時把畫面倒退
+    emit('update_board', get_clean_state(state), to=room_code, include_self=False)
+    return {'version': state['version']}
 
 @socketio.on('send_chat')
 def handle_send_chat(data):

@@ -6,10 +6,10 @@
     <title>WALL GO — 對局中</title>
     <script src="https://unpkg.com/vue@3.4.38/dist/vue.global.prod.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 英文字母用 Londrina Solid（手剪紙風、粗黑不規則），中文沒有對應字形會自動落到 Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Londrina+Solid:wght@300;400;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             /* ── 淡天藍底 × 磚紅 × 米白紙 × 黑線條 ── */
@@ -42,16 +42,19 @@
             --pc-yellow: #e8b12e; --pc-yellow-top: #f5c94f; --pc-yellow-side: #bd8a16;
             --pc-green: #4c8a45;  --pc-green-top: #5fa456;  --pc-green-side: #376630;
 
-            --font-display: 'Anton', 'Archivo', 'Noto Sans TC', sans-serif;
-            --font-sans: 'Archivo', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+            --font-display: 'Londrina Solid', 'Noto Sans TC', sans-serif;
+            --font-sans: 'Londrina Solid', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
             --bw: 2.5px;
             --lift: 0 4px 0 rgba(27, 27, 27, .2);
 
-            /* 上下 HUD 預留高度，棋盤落在兩者之間 */
-            --hud-top: 96px;
-            --hud-bot: 24px;
-            --side: 112px;
-            --edge: 20px;
+            /* 依螢幕大小縮放：按鈕、聊天室寬度都跟著視窗走，全螢幕在大螢幕上也不會顯得太小 */
+            --edge: clamp(12px, 2vmin, 28px);
+            --btn: clamp(52px, 7vmin, 88px);
+            --chat-w: clamp(300px, 26vw, 440px);
+            /* 上下 HUD 預留高度，棋盤落在兩者之間；左右預留一顆按鈕寬 */
+            --hud-top: calc(var(--btn) + var(--edge) + 6px);
+            --hud-bot: var(--edge);
+            --side: calc(var(--btn) + var(--edge) * 2);
         }
 
         * { box-sizing: border-box; }
@@ -100,12 +103,13 @@
             container-type: size;
             transition: right .4s cubic-bezier(.175, .885, .32, 1.275);
         }
-        /* 聊天室打開時，棋盤與上方回合列讓出右側空間，不被蓋住（手機版聊天室直接疊在上面） */
-        @media (min-width: 721px) {
-            body.chat-open .stage { right: calc(344px + var(--edge)); }
-            body.chat-open .hud-top { left: calc((100vw - 344px - var(--edge)) / 2); }
+        /* 寬螢幕：聊天室打開時，棋盤與上方回合列讓出右側空間，不被蓋住。
+           寬度不夠（< 1000px）時讓出去棋盤會太小，改成聊天室直接疊在棋盤上 */
+        @media (min-width: 1000px) {
+            body.chat-open .stage { right: calc(var(--chat-w) + var(--edge)); }
+            body.chat-open .hud-top { left: calc((100vw - var(--chat-w) - var(--edge)) / 2); }
             /* 右下的全螢幕／麥克風／聊天鈕也要讓位，否則會被聊天室蓋住 */
-            body.chat-open .hud-br { right: calc(344px + var(--edge) * 2); }
+            body.chat-open .hud-br { right: calc(var(--chat-w) + var(--edge) * 2); }
         }
         .board {
             width: min(100cqh, 100cqw - 2 * var(--side));
@@ -142,6 +146,14 @@
             border: 2px solid #16253d; border-radius: 50%;
             background:
                 radial-gradient(closest-side ellipse at 50% 50%, transparent 0 40%, rgba(22, 37, 61, .35) 40% 49%, transparent 49%),
+                var(--pc-top);
+        }
+        /* 規則 2 的方形棋：同一套配色，柱身與頂面改成方角，看起來像一塊積木 */
+        .piece.square::before { border-radius: 0 0 10% 10% / 0 0 6% 6%; top: 18%; }
+        .piece.square::after {
+            height: 38%; border-radius: 14%;
+            background:
+                radial-gradient(closest-side, transparent 0 46%, rgba(22, 37, 61, .3) 46% 56%, transparent 56%),
                 var(--pc-top);
         }
         .piece-red    { --pc-body: var(--pc-red);    --pc-top: var(--pc-red-top); }
@@ -199,12 +211,12 @@
             box-shadow: var(--lift);
         }
         .round-btn {
-            width: 72px; height: 72px; padding: 0; border-radius: 50%;
+            width: var(--btn); height: var(--btn); padding: 0; border-radius: 50%;
             border: var(--bw) solid var(--outline); background: var(--cream-hi);
             display: grid; place-items: center; cursor: pointer;
             box-shadow: var(--lift); transition: transform .15s, background .15s;
         }
-        .round-btn .ico { width: 30px; height: 30px; }
+        .round-btn .ico { width: calc(var(--btn) * .42); height: calc(var(--btn) * .42); }
         .round-btn:hover { background: var(--yellow); transform: translateY(-2px); }
         .round-btn:active { transform: translateY(1px); }
 
@@ -216,11 +228,11 @@
             transition: left .4s cubic-bezier(.175, .885, .32, 1.275);
         }
         .phase-flag {
-            position: relative; width: 44px; padding: 10px 0 18px; margin-top: calc(-1 * var(--edge));
+            position: relative; width: clamp(44px, 5.4vmin, 58px); padding: 10px 0 18px; margin-top: calc(-1 * var(--edge));
             padding-top: calc(var(--edge) + 8px);
             background: var(--pink);
             display: flex; flex-direction: column; align-items: center;
-            font-weight: 700; font-size: 14px; line-height: 1.25;
+            font-weight: 700; font-size: clamp(14px, 1.9vmin, 19px); line-height: 1.25;
             clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 9px), 0 100%);
         }
         .turn {
@@ -241,37 +253,45 @@
             transition: background .3s;
         }
         .turn .ring {
-            width: 40px; height: 40px; border-radius: 50%; flex: none;
+            width: clamp(36px, 5vmin, 56px); height: clamp(36px, 5vmin, 56px); border-radius: 50%; flex: none;
             display: grid; place-items: center;
         }
-        .turn .ring .token { width: 36px; height: 36px; }
+        .turn .ring .token { width: 90%; height: 90%; }
         .turn .ring .token .piece { transform: none; }
-        .turn-name { min-width: 0; font-size: 15px; font-weight: 700; max-width: 9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .turn-name { min-width: 0; font-size: clamp(15px, 2.2vmin, 22px); font-weight: 700; max-width: 9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .turn-time {
-            font-family: var(--font-display); font-size: 26px; line-height: 1; min-width: 1.5em; text-align: right;
+            font-family: var(--font-display); font-weight: 900; font-size: clamp(26px, 3.6vmin, 40px); line-height: 1; min-width: 1.5em; text-align: right;
             font-variant-numeric: tabular-nums; white-space: nowrap;
         }
         .turn-time small { font-family: var(--font-sans); font-size: 12px; font-weight: 700; margin-left: 2px; }
         .turn.low .turn-time { color: var(--red); animation: tick 1s steps(1) infinite; }
         @keyframes tick { 50% { opacity: .35; } }
 
-        /* ── 右上：選單 ── */
-        .hud-tl { top: var(--edge); left: var(--edge); display: flex; gap: 10px; }
+        /* ── 左上：選單＋觀戰人數 ── */
+        .hud-tl { top: var(--edge); left: var(--edge); display: flex; align-items: center; gap: 10px; }
+        .spec-chip {
+            display: inline-flex; align-items: center; gap: 6px; height: calc(var(--btn) * .62);
+            padding: 0 14px; border-radius: 999px; font-weight: 700; font-size: clamp(13px, 1.8vmin, 17px);
+            white-space: nowrap; cursor: default;
+        }
+        .spec-chip .ico { width: 1.3em; height: 1.3em; }
+        .spec-chip.me { background: var(--sky); }
+        .rule-chip { background: var(--pink); }
 
 
         /* ── 右下：大方鈕（全螢幕、聊天、語音）── */
         .hud-br {
             right: var(--edge); bottom: var(--edge);
-            display: flex; flex-direction: column; gap: 14px;
+            display: flex; flex-direction: column; gap: calc(var(--btn) * .2);
             transition: right .4s cubic-bezier(.175, .885, .32, 1.275);
         }
         .big-btn {
-            position: relative; width: 72px; height: 72px; padding: 0; border-radius: 50%;
+            position: relative; width: var(--btn); height: var(--btn); padding: 0; border-radius: 50%;
             border: var(--bw) solid var(--outline); background: var(--cream-hi);
             display: grid; place-items: center; cursor: pointer;
             box-shadow: var(--lift); transition: transform .15s, background .15s;
         }
-        .big-btn .ico { width: 30px; height: 30px; }
+        .big-btn .ico { width: calc(var(--btn) * .42); height: calc(var(--btn) * .42); }
         .big-btn:hover { background: var(--yellow); transform: translateY(-2px); }
         .big-btn:active { transform: translateY(1px); }
         .big-btn.breaker { background: var(--red); color: var(--cream-hi); }
@@ -279,8 +299,9 @@
         .big-btn.breaker.on { background: var(--yellow); color: var(--outline); }
         .big-btn.breaker:disabled { background: var(--cream-lo); color: #a8a396; border-color: rgba(27,27,27,.3);
                                     cursor: not-allowed; box-shadow: none; transform: none; }
-        .big-btn.top-breaker { width: 57px; height: 57px; border-radius: 50%; }
-        .big-btn.top-breaker .ico { width: 32px; height: 32px; }
+        .big-btn.top-breaker { width: calc(var(--btn) * .8); height: calc(var(--btn) * .8); border-radius: 50%; }
+        .big-btn.top-breaker .ico { width: calc(var(--btn) * .44); height: calc(var(--btn) * .44); }
+        .big-btn.hud-toggle { width: calc(var(--btn) * .78); height: calc(var(--btn) * .78); align-self: flex-end; }
         .big-btn.mic-on { background: var(--green); color: var(--cream-hi); animation: pulse-mic 1.5s infinite; }
         @keyframes pulse-mic {
             0% { box-shadow: 0 0 0 0 rgba(127, 169, 63, .55); }
@@ -298,7 +319,8 @@
         /* ══════════ 聊天抽屜 ══════════ */
         .chat {
             position: fixed; z-index: 30; top: 50%; right: var(--edge);
-            width: 344px; height: min(620px, 92dvh);
+            width: var(--chat-w); height: min(900px, calc(100dvh - var(--edge) * 2));
+            font-size: clamp(13.5px, .45vw + 8px, 17px);
             transform: translate(calc(100% + 40px), -50%);
             display: flex; flex-direction: column; overflow: hidden;
             border-radius: 24px; border-width: 3px;
@@ -308,14 +330,14 @@
         .chat-header {
             display: flex; justify-content: space-between; align-items: center; flex: none;
             padding: 13px 16px; background: var(--outline); color: var(--cream-hi);
-            font-size: 12px; font-weight: 700; letter-spacing: .2em;
+            font-size: .9em; font-weight: 700; letter-spacing: .2em;
         }
         .chat-header button { background: none; border: 0; color: inherit; cursor: pointer; padding: 2px; display: grid; }
         .chat-header button:hover { color: var(--yellow); }
         .chat-header .ico { width: 18px; height: 18px; }
         .chat-messages {
             flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 15px;
-            display: flex; flex-direction: column; gap: 10px; font-size: 13.5px;
+            display: flex; flex-direction: column; gap: 10px; font-size: 1em;
         }
         .chat-messages::-webkit-scrollbar { width: 6px; }
         .chat-messages::-webkit-scrollbar-thumb { background: var(--cream-lo); border-radius: 9px; }
@@ -330,7 +352,7 @@
             background: var(--cream); border-top: 2px solid var(--outline);
         }
         .chat-quick button {
-            flex: none; padding: 5px 11px; font-size: 15px; border-radius: 999px;
+            flex: none; padding: 5px 11px; font-size: 1.1em; border-radius: 999px;
             border: 2px solid var(--outline); background: var(--cream-hi); cursor: pointer;
         }
         .chat-quick button:hover { background: var(--yellow); }
@@ -338,7 +360,7 @@
         .chat-input-wrap { position: relative; flex: 1; min-width: 0; }
         .chat-input input {
             width: 100%; padding: 11px 12px; border-radius: 14px; border: 2px solid var(--outline);
-            background: #fff; font: inherit; font-size: 13.5px; outline: none;
+            background: #fff; font: inherit; font-size: max(16px, 1em); outline: none;
         }
         .chat-input input:focus { background: var(--cream-hi); }
         .chat-input > button {
@@ -367,7 +389,7 @@
             background: rgba(27, 40, 55, .45);
         }
         .result { width: min(380px, 100%); padding: 22px 22px 18px; text-align: center; border-radius: 24px; border-width: 3px; }
-        .result h2 { margin: 0; font-family: var(--font-display); font-size: 34px; font-weight: 400; letter-spacing: .04em; }
+        .result h2 { margin: 0; font-family: var(--font-display); font-size: 34px; font-weight: 900; letter-spacing: .04em; }
         .result .reason { margin: 4px 0 14px; font-size: 13px; color: var(--text-sub); }
         .rank { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 6px;
                 border: 2px solid var(--outline); border-radius: 14px; background: var(--cream); text-align: left; }
@@ -386,25 +408,21 @@
         .result-actions button:hover { transform: translateY(-2px); }
 
         /* ══════════ 響應式 ══════════ */
-        @media (max-height: 760px) {
-            :root { --hud-top: 86px; --hud-bot: 16px; --edge: 14px; --side: 96px; }
-            .big-btn { width: 60px; height: 60px; border-radius: 50%; }
-            .big-btn .ico { width: 26px; height: 26px; }
-            .round-btn { width: 60px; height: 60px; }
-            .round-btn .ico { width: 26px; height: 26px; }
+        /* 很矮的橫向螢幕（手機橫拿）：按鈕縮小、聊天室改用整個高度 */
+        @media (max-height: 480px) and (min-width: 721px) {
+            :root { --btn: 46px; --edge: 10px; }
+            .chat { height: calc(100dvh - 20px); }
         }
 
         /* 手機：上方兩列（徽章／按鈕列＋對手列），下方操作區撐滿寬度 */
         @media (max-width: 720px) {
-            :root { --hud-top: 120px; --hud-bot: 12px; --edge: 12px; --side: 12px; }
+            .spec-chip { padding: 0 10px; }
+            :root { --btn: 48px; --hud-top: 120px; --hud-bot: 12px; --edge: 12px; --side: 12px; }
             .hud-top { top: 66px; }
             .phase-flag { margin-top: 0; padding-top: 8px; }
             .hud-br { top: var(--edge); bottom: auto; right: var(--edge); flex-direction: row; gap: 8px; }
-            .big-btn { width: 48px; height: 48px; border-radius: 50%; }
-            .big-btn .ico { width: 22px; height: 22px; }
-            .round-btn { width: 48px; height: 48px; }
-            .round-btn .ico { width: 22px; height: 22px; }
             .big-btn.fs { display: none; }
+            .big-btn.hud-toggle { width: var(--btn); height: var(--btn); }
             .stage { left: 0; right: 0; }
             .chat { right: 12px; width: calc(100vw - 24px); height: 80dvh; }
         }
@@ -413,7 +431,7 @@
 <body>
     <div class="vignette"></div>
     <div class="grain"></div>
-    <!-- 遠端語音的 <audio> 由 PeerJS 直接操作，放在 Vue 範圍外 -->
+    <!-- 遠端語音的 <audio> 由 WebRTC 程式直接操作，放在 Vue 範圍外 -->
     <div id="audio-container" hidden></div>
 
     <div id="app" v-cloak>
@@ -423,7 +441,7 @@
                 <div v-for="cell in cells" :key="cell.key"
                      class="grid-item" :class="cell.cls" @click="onCellClick(cell)">
                     <div v-if="cell.piece" class="piece"
-                         :class="['piece-' + cell.piece.color, { selected: cell.piece.selected }]"></div>
+                         :class="['piece-' + cell.piece.color, { selected: cell.piece.selected, square: cell.piece.shape === 'square' }]"></div>
                 </div>
             </div>
         </main>
@@ -433,11 +451,11 @@
             <div class="phase-flag" :title="'目前階段：' + phaseLabel"><span v-for="(ch, i) in phaseLabel" :key="i">{{ ch }}</span></div>
             <div v-if="curColor" class="card turn" :class="{ low: timeOf(curColor) <= 10 }"
                  :style="{ '--ring': colorMap[curColor].color, '--p': timeOf(curColor) / TURN_TIME_LIMIT }">
-                <span class="ring"><span class="token"><span class="piece" :class="'piece-' + curColor"></span></span></span>
+                <span class="ring" :title="curShape ? '這次要放' + (curShape === 'square' ? '方形棋' : '圓形棋') : ''"><span class="token"><span class="piece" :class="['piece-' + curColor, { square: curShape === 'square' }]"></span></span></span>
                 <span class="turn-name">{{ nameOf(curColor) }}{{ tagOf(curColor) }}</span>
                 <span class="turn-time">{{ timeOf(curColor) }}<small>秒</small></span>
             </div>
-            <button class="big-btn breaker top-breaker" :disabled="!canUseBreaker" :class="{ on: S.phase === 'wall_breaking' }"
+            <button v-if="!S.spectator" class="big-btn breaker top-breaker" :disabled="!canUseBreaker" :class="{ on: S.phase === 'wall_breaking' }"
                     @click="S.phase === 'wall_breaking' ? toggleWallBreaker() : (S.confirmBreak = true)"
                     :title="S.phase === 'wall_breaking' ? '取消破牆' : '使用破牆'" aria-label="使用破牆">
                 <svg v-if="S.phase !== 'wall_breaking'" class="ico" viewBox="0 0 24 24" style="fill: currentColor; stroke-width: 1.2"><path d="M1.5 6.5H10.4L8.4 10l2 2.6-1.4 4.9H1.5z"/><path d="M22.5 6.5H13.9l-2 3.5 2 2.6-1.4 4.9h10z"/></svg>
@@ -450,27 +468,45 @@
             <button class="round-btn" @click="backToMenu" title="回首頁" aria-label="回首頁">
                 <svg class="ico" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10.5V19h11v-8.5"/><path d="M10 19v-4.5h4V19"/></svg>
             </button>
-            <button class="round-btn" @click="S.confirmReset = true" title="重新開始" aria-label="重新開始">
+            <button v-if="!S.spectator" class="round-btn" @click="S.confirmReset = true" title="重新開始" aria-label="重新開始">
                 <svg class="ico" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/></svg>
             </button>
             <button v-if="S.result" class="round-btn" @click="S.showResult = true" title="查看結算" aria-label="查看結算">
                 <svg class="ico" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.8 3.4M17 6h2.5a2.5 2.5 0 0 1-2.8 3.4"/></svg>
             </button>
+            <div v-if="S.rules === 2" class="card spec-chip rule-chip" title="牆壁圍棋 2：每人一圓一方，方形只能直走，破牆只能破棋子旁邊">規則 2</div>
+            <!-- 觀戰：自己是觀戰者時標示「觀戰中」，否則顯示目前有幾個人在看 -->
+            <div v-if="isOnline && (S.spectator || S.spectators.length)" class="card spec-chip" :class="{ me: S.spectator }"
+                 :title="S.spectators.length ? '觀戰中：' + S.spectators.join('、') : ''">
+                <svg class="ico" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>{{ S.spectator ? '觀戰中' : '' }}{{ S.spectators.length ? (S.spectator ? ' · ' : '') + S.spectators.length : '' }}</span>
+            </div>
         </div>
 
         <!-- ═════ 右下：大方鈕 ═════ -->
         <div class="hud hud-br">
+            <!-- 全螢幕時三顆鈕預設收起，只留一顆展開鈕 -->
+            <template v-if="!(S.fullscreen && S.hudCollapsed)">
             <button class="big-btn fs" @click="toggleFullscreen" :title="S.fullscreen ? '離開全螢幕' : '全螢幕'" aria-label="全螢幕">
                 <svg v-if="!S.fullscreen" class="ico" viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>
                 <svg v-else class="ico" viewBox="0 0 24 24"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>
             </button>
-            <button v-if="isOnline" class="big-btn" :class="{ 'mic-on': S.micOn }" @click="toggleMic"
+            <button v-if="isOnline && !S.spectator" class="big-btn" :class="{ 'mic-on': S.micOn }" @click="toggleMic"
                     :title="S.micOn ? '關閉語音' : '開啟語音'" aria-label="開啟或關閉語音">
                 <svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/><path v-if="!S.micOn" d="M4 4l16 16"/></svg>
             </button>
             <button v-if="isOnline" class="big-btn" @click="toggleChat" title="聊天室" aria-label="聊天室">
                 <svg class="ico" viewBox="0 0 24 24"><path d="M21 11.6c0 4-3.9 7.2-8.7 7.2-1 0-2-.14-2.9-.4L4 21l1.5-3.5C3.9 16.2 3 14 3 11.6 3 7.6 6.9 4.4 11.7 4.4S21 7.6 21 11.6z"/></svg>
                 <span v-if="S.unread" class="badge">!</span>
+            </button>
+            </template>
+            <button v-if="S.fullscreen" class="big-btn hud-toggle" :class="{ 'mic-on': S.hudCollapsed && S.micOn }"
+                    @click="S.hudCollapsed = !S.hudCollapsed"
+                    :title="S.hudCollapsed ? '展開按鈕' : '收起按鈕'" :aria-label="S.hudCollapsed ? '展開按鈕' : '收起按鈕'"
+                    :aria-expanded="!S.hudCollapsed">
+                <svg v-if="S.hudCollapsed" class="ico fill" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/></svg>
+                <svg v-else class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span v-if="S.hudCollapsed && S.unread" class="badge">!</span>
             </button>
         </div>
 
@@ -483,7 +519,7 @@
                 </button>
             </div>
             <div class="chat-messages" ref="chatBox">
-                <div class="chat-hint">歡迎來到房間，打個招呼吧！</div>
+                <div class="chat-hint">{{ S.spectator ? '你正在觀戰，可以聊天、聽語音，但不能下棋。' : '歡迎來到房間，打個招呼吧！' }}</div>
                 <div v-for="m in S.chat" :key="m.id" class="chat-msg">
                     <strong :style="{ color: colorMap[m.color] ? colorMap[m.color].color : 'inherit' }">{{ m.name }}:</strong>
                     <template v-for="(part, i) in splitMention(m.text)" :key="i"><span v-if="part.mention" class="mention-highlight">{{ part.text }}</span><template v-else>{{ part.text }}</template></template>
@@ -550,7 +586,7 @@
                     <div class="result-actions">
                         <button @click="S.showResult = false">看棋盤</button>
                         <button @click="backToMenu">回大廳</button>
-                        <button class="primary" @click="S.showResult = false; resetGame(true)">再來一局</button>
+                        <button v-if="!S.spectator" class="primary" @click="S.showResult = false; resetGame(true)">再來一局</button>
                     </div>
                 </div>
             </div>
@@ -569,6 +605,8 @@
     const mode = urlParams.get('mode');
     const roomCode = urlParams.get('room');
     const isOnline = mode === 'online';
+    const wantSpectate = isOnline && urlParams.get('spectate') === '1';
+    const urlRules = urlParams.get('rules') === '2' ? 2 : 1;
     const isVsAI = paramPlayers === 'ai';
     const playerCount = isVsAI ? 2 : (parseInt(paramPlayers) || 3);
     const aiColor = isVsAI ? 'blue' : null;
@@ -603,7 +641,10 @@
         colorToName: {},
         // 介面狀態
         chat: [], chatInput: '', chatOpen: false, unread: false,
-        micOn: false, fullscreen: false,
+        micOn: false, fullscreen: false, hudCollapsed: false,
+        spectator: wantSpectate, spectators: [],
+        rules: urlRules,      // 1 = 原版；2 = 每人一圓一方，方形只能直走，破牆限棋子四周
+        moveDir: null,        // 規則 2 方形棋第一步的方向 [dr, dc]，第二步只能同方向
         toast: '', result: null, showResult: false, confirmReset: false, confirmBreak: false
     });
 
@@ -612,6 +653,7 @@
     let socket = null;
     let chatSeq = 0;
     let toastTimer = null;
+    let lastVersion = 0;   // 伺服器狀態版本，比這個舊的 update_board 一律丟掉
 
     if (!isOnline) {
         S.colorToName.red = session ? session.name : '玩家1';
@@ -640,6 +682,40 @@
     }
     function getPieceIndexAt(r, c) { return S.pieces.findIndex(p => p.r === r && p.c === c); }
 
+    // ── 規則 2 ──
+    // 放置：每人先放圓形、再放方形
+    function nextShape(color) {
+        if (S.rules !== 2) return undefined;
+        return S.pieces.some(p => p.color === color && p.shape === 'circle') ? 'square' : 'circle';
+    }
+    function newPiece(color, r, c) {
+        const shape = nextShape(color);
+        return shape ? { color, r, c, shape } : { color, r, c };
+    }
+    // 選中棋子這一步能去哪：方形棋第二步只能沿第一步的方向（或停在原地結束）
+    function movesForPiece(p) {
+        const moves = getValidMoves(p.r, p.c);
+        if (S.rules !== 2 || p.shape !== 'square' || S.stepsTaken !== 1 || !S.moveDir) return moves;
+        const [dr, dc] = S.moveDir;
+        return moves.filter(m => (m.r === p.r && m.c === p.c) || (m.r === p.r + 2 * dr && m.c === p.c + 2 * dc));
+    }
+    // 可以拆的牆：規則 1 是自己蓋的牆；規則 2 是自己棋子四周的牆（不論誰蓋的）
+    function breakableWalls(color) {
+        const out = new Set();
+        if (S.rules !== 2) {
+            S.walls.forEach((v, k) => { if (v === color) out.add(k); });
+            return out;
+        }
+        S.pieces.forEach(p => {
+            if (p.color !== color) return;
+            for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                const k = key(p.r + dr, p.c + dc);
+                if (S.walls.has(k)) out.add(k);
+            }
+        });
+        return out;
+    }
+
     function saveHistoryStep() {
         moveHistory.push({ pieces: plain(S.pieces), walls: Array.from(S.walls.entries()) });
     }
@@ -658,7 +734,7 @@
     }
     function sendMsg(msg) {
         const name = session ? session.name : '玩家';
-        const color = S.myOnlineColor || 'red';
+        const color = S.myOnlineColor || (S.spectator ? 'spectator' : 'red');
         appendChatMessage(name, color, msg);
         emitChat(msg, name, color);
     }
@@ -685,44 +761,76 @@
             movedPieceIndex: S.movedPieceIndex,
             selectedPieceIndex: S.selectedPieceIndex,
             stepsTaken: S.stepsTaken,
+            moveDir: S.moveDir,
+            rules: S.rules,
             playersInfo: plain(S.playersInfo),
-            playerTimes: plain(S.playerTimes)
-        });
+            playerTimes: plain(S.playerTimes),
+            activeColors: plain(S.activeColors),
+            placementQueue: plain(S.placementQueue),
+            movementOrder: plain(S.movementOrder)
+        }, (ack) => { if (ack && ack.version > lastVersion) lastVersion = ack.version; });
+    }
+
+    function applyServerState(data) {
+        if (!data) return;
+        if (typeof data.version === 'number') {
+            if (data.version <= lastVersion) return;   // 晚到的舊狀態，忽略
+            lastVersion = data.version;
+        }
+        if (Array.isArray(data.activeColors) && data.activeColors.length) {
+            S.activeColors = data.activeColors;
+            S.placementQueue = data.placementQueue || S.placementQueue;
+            S.movementOrder = data.movementOrder || S.movementOrder;
+        }
+        S.pieces = data.pieces || [];
+        // 伺服器回傳的牆是 [{r, c, color}]，前端用的是 [["r,c", color]]，兩種都接受
+        S.walls = new Map((data.walls || []).map(w => Array.isArray(w) ? w : [key(w.r, w.c), w.color]));
+        S.territories = new Map(data.territories || []);
+        S.phase = data.phase;
+        S.turnIndex = data.turnIndex;
+        S.movedPieceIndex = data.movedPieceIndex;
+        S.selectedPieceIndex = data.selectedPieceIndex;
+        S.stepsTaken = data.stepsTaken;
+        S.moveDir = data.moveDir || null;
+        if (data.rules === 1 || data.rules === 2) S.rules = data.rules;
+        if (data.playersInfo) S.playersInfo = data.playersInfo;
+        if (data.playerTimes) S.playerTimes = data.playerTimes;
+        // 對方按了重新開始：本機時鐘若因上一局結束而停掉，要重新啟動
+        if (S.phase !== 'game_over') {
+            if (S.phase === 'placement' && S.pieces.length === 0) { S.result = null; S.showResult = false; }
+            if (!clockInterval) startClock();
+        }
+        saveHistoryStep();
+        autoCheckEndGame(false);
     }
 
     // ── 連線 ──
     if (isOnline) {
-        socket = io(API_URL);
-        socket.emit('join_game_room', { room_code: roomCode, user_id: session && session.id });
+        socket = io(API_URL, { reconnectionDelayMax: 3000 });
+
+        // 每次連上（包含斷線重連、伺服器重啟後）都重新入房，否則重連後的 socket 不在房間裡，
+        // 對手的棋步就再也收不到
+        socket.on('connect', () => {
+            socket.emit('join_game_room', {
+                room_code: roomCode, user_id: session && session.id,
+                user_name: session ? session.name : '訪客', spectate: wantSpectate
+            });
+        });
 
         socket.on('init_game', (data) => {
-            S.myOnlineColor = data.my_color;
-            if (data.room_players) S.colorToName = data.room_players;
-            if (S.myOnlineColor !== 'red') {
-                setTimeout(() => emitChat('🔄 新玩家加入，請求同步狀態...', '系統', 'yellow'), 500);
+            if (data.my_color) S.myOnlineColor = data.my_color;
+            if (data.spectator && !S.myOnlineColor) S.spectator = true;
+            if (data.room_players && Object.keys(data.room_players).length) S.colorToName = data.room_players;
+            lastVersion = 0;
+            if (data.initial_state) applyServerState(data.initial_state);
+            else if (S.myOnlineColor && (S.pieces.length || S.myOnlineColor === 'red')) {
+                broadcastGameState();   // 伺服器重啟把房間弄丟了：用本機狀態補回去
             }
+            voiceOnJoined();
         });
 
-        socket.on('update_board', (data) => {
-            S.pieces = data.pieces;
-            // 伺服器回傳的牆是 [{r, c, color}]，前端用的是 [["r,c", color]]，兩種都接受
-            S.walls = new Map((data.walls || []).map(w => Array.isArray(w) ? w : [key(w.r, w.c), w.color]));
-            S.territories = new Map(data.territories || []);
-            S.phase = data.phase;
-            S.turnIndex = data.turnIndex;
-            S.movedPieceIndex = data.movedPieceIndex;
-            S.selectedPieceIndex = data.selectedPieceIndex;
-            S.stepsTaken = data.stepsTaken;
-            S.playersInfo = data.playersInfo;
-            S.playerTimes = data.playerTimes;
-            // 對方按了重新開始：本機時鐘若因上一局結束而停掉，要重新啟動
-            if (S.phase !== 'game_over') {
-                if (S.phase === 'placement' && S.pieces.length === 0) { S.result = null; S.showResult = false; }
-                if (!clockInterval) startClock();
-            }
-            saveHistoryStep();
-            autoCheckEndGame(false);
-        });
+        socket.on('update_board', applyServerState);
+        socket.on('spectators_updated', (data) => { S.spectators = (data && data.names) || []; });
 
         // 伺服器是計時的權威，每秒校正一次剩餘秒數
         socket.on('sync_time', (data) => {
@@ -730,24 +838,11 @@
         });
 
         socket.on('receive_chat', (data) => {
-            if (data.message.startsWith('[SYS_PEER_ID]:')) {
-                if (S.micOn && data.color !== S.myOnlineColor) {
-                    const remotePeerId = data.message.slice('[SYS_PEER_ID]:'.length).trim();
-                    // 兩邊同時開麥時只讓 id 較小的一方主動撥出，避免互撥產生重複音軌與回音
-                    const shouldDial = myPeer && remotePeerId && !connectedPeers.has(remotePeerId)
-                                       && myPeer.id && myPeer.id < remotePeerId;
-                    if (shouldDial) {
-                        connectedPeers.add(remotePeerId);
-                        handleCallStream(myPeer.call(remotePeerId, localStream));
-                    } else if (myPeer && remotePeerId && !connectedPeers.has(remotePeerId)) {
-                        emitChat(`[SYS_PEER_ID]:${myPeer.id}`, session ? session.name : '玩家', S.myOnlineColor);
-                    }
-                }
-                return;
-            }
+            if (typeof data.message !== 'string' || data.message.startsWith('[SYS_PEER_ID]:')) return;  // 舊版語音訊號
             appendChatMessage(data.user_name, data.color, data.message);
-            if (data.message === '🔄 新玩家加入，請求同步狀態...' && S.myOnlineColor === 'red') broadcastGameState();
         });
+
+        socket.on('voice_signal', onVoiceSignal);
     }
 
     // ── 對局流程 ──
@@ -760,7 +855,7 @@
         const info = {}, times = {};
         S.activeColors.forEach(c => { info[c] = { hasBreaker: true }; times[c] = TURN_TIME_LIMIT; });
         S.playersInfo = info; S.playerTimes = times;
-        S.phase = 'placement'; S.turnIndex = 0; S.selectedPieceIndex = -1; S.movedPieceIndex = -1; S.stepsTaken = 0;
+        S.phase = 'placement'; S.turnIndex = 0; S.selectedPieceIndex = -1; S.movedPieceIndex = -1; S.stepsTaken = 0; S.moveDir = null;
         S.isProcessing = false; S.result = null; S.showResult = false;
 
         moveHistory = [];
@@ -768,7 +863,7 @@
         startClock();
         checkAITurn();
 
-        if (isOnline && isManual) {
+        if (isOnline && isManual && !S.spectator) {
             broadcastGameState();
             systemMsg('🔄 已重新開始新的一局！', true);
         }
@@ -814,7 +909,7 @@
                     if (getPieceIndexAt(r, c) === -1) emptyCells.push({ r, c });
             if (emptyCells.length > 0) {
                 const rand = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-                S.pieces.push({ color: S.placementQueue[S.turnIndex], r: rand.r, c: rand.c });
+                S.pieces.push(newPiece(S.placementQueue[S.turnIndex], rand.r, rand.c));
             }
             S.turnIndex++;
             if (S.turnIndex >= S.placementQueue.length) { S.phase = 'movement'; S.turnIndex = 0; }
@@ -833,9 +928,9 @@
             let totalMobility = 0;
             myPieces.forEach(p => totalMobility += getValidMoves(p.r, p.c).length);
 
-            const myWalls = Array.from(S.walls.entries()).filter(([, v]) => v === color);
+            const myWalls = [...breakableWalls(color)];
             if (S.playersInfo[color].hasBreaker && myWalls.length > 0 && (totalMobility <= 2 || isTimeoutBreak)) {
-                S.walls.delete(myWalls[Math.floor(Math.random() * myWalls.length)][0]);
+                S.walls.delete(myWalls[Math.floor(Math.random() * myWalls.length)]);
                 S.playersInfo[color].hasBreaker = false;
             }
 
@@ -902,6 +997,7 @@
 
     function checkMyTurn(cc) {
         if (isOnline) {
+            if (S.spectator) { showToast('觀戰中，不能操作棋盤喔！'); return false; }
             if (S.myOnlineColor === null) { showToast('尚未獲取陣營分配，請稍候...'); return false; }
             if (cc !== S.myOnlineColor) { showToast('還沒輪到你喔！請等待對手下棋。'); return false; }
         }
@@ -917,7 +1013,7 @@
         let actionMade = false;
         if (S.phase === 'placement') {
             if (getPieceIndexAt(r, c) !== -1) return;
-            S.pieces.push({ color: cc, r, c });
+            S.pieces.push(newPiece(cc, r, c));
             S.turnIndex++;
             if (S.turnIndex >= S.placementQueue.length) { S.phase = 'movement'; S.turnIndex = 0; }
             resetCurrentPlayerTimer();
@@ -932,11 +1028,12 @@
                 S.selectedPieceIndex = clicked; actionMade = true;
             } else {
                 const p = S.pieces[S.selectedPieceIndex];
-                const isValid = getValidMoves(p.r, p.c).some(m => m.r === r && m.c === c);
+                const isValid = movesForPiece(p).some(m => m.r === r && m.c === c);
                 if (isValid) {
                     if (p.r === r && p.c === c) {
                         S.movedPieceIndex = S.selectedPieceIndex; S.selectedPieceIndex = -1; S.stepsTaken = 0; S.phase = 'wall_building';
                     } else {
+                        if (S.stepsTaken === 0) S.moveDir = [Math.sign(r - p.r), Math.sign(c - p.c)];
                         p.r = r; p.c = c; S.stepsTaken++;
                         if (S.stepsTaken >= 2) {
                             S.movedPieceIndex = S.selectedPieceIndex; S.selectedPieceIndex = -1; S.stepsTaken = 0; S.phase = 'wall_building';
@@ -968,14 +1065,14 @@
             const isValid = getValidWalls(mp.r, mp.c).some(w => w.r === r && w.c === c);
             if (isValid && !S.walls.has(k)) { S.walls.set(k, cc); endTurn(); }
         } else if (S.phase === 'wall_breaking' && S.walls.has(k)) {
-            if (S.walls.get(k) === cc) {
+            if (breakableWalls(cc).has(k)) {
                 S.walls.delete(k);
                 S.playersInfo[cc].hasBreaker = false;
                 S.phase = 'movement';
                 autoCheckEndGame(false);
                 saveHistoryStep();
                 broadcastGameState();
-            } else showToast('只能拆除你自己建立的牆壁！');
+            } else showToast(S.rules === 2 ? '只能拆除你棋子旁邊的牆壁！' : '只能拆除你自己建立的牆壁！');
         }
     }
 
@@ -990,8 +1087,7 @@
             return;
         }
         if (S.phase === 'movement' && S.stepsTaken === 0) {
-            const hasOwn = Array.from(S.walls.values()).some(v => v === cc);
-            if (!hasOwn) return showToast('場上目前沒有你建立的牆壁可供拆除！');
+            if (!breakableWalls(cc).size) return showToast(S.rules === 2 ? '你的棋子旁邊目前沒有牆壁可以拆！' : '場上目前沒有你建立的牆壁可供拆除！');
             S.phase = 'wall_breaking'; S.selectedPieceIndex = -1;
             broadcastGameState();
         }
@@ -1073,7 +1169,7 @@
         if (!gameOver) {
             outer:
             for (const color of S.activeColors) {
-                if (S.playersInfo[color].hasBreaker && [...S.walls.values()].some(v => v === color)) { anyPlayerCanMove = true; break; }
+                if (S.playersInfo[color].hasBreaker && breakableWalls(color).size) { anyPlayerCanMove = true; break; }
                 for (const p of S.pieces.filter(p => p.color === color)) {
                     for (const m of getValidMoves(p.r, p.c)) {
                         if (getValidWalls(m.r, m.c).length > 0) { anyPlayerCanMove = true; break outer; }
@@ -1104,13 +1200,13 @@
             replayData: JSON.stringify(moveHistory)
         };
         const uniqueKey = historyRecord.winScore + '_' + historyRecord.details.replace(/\s+/g, '');
-        try {
+        if (!S.spectator) try {
             const localReplays = JSON.parse(localStorage.getItem('wallGoReplays') || '{}');
             localReplays[uniqueKey] = historyRecord.replayData;
             localStorage.setItem('wallGoReplays', JSON.stringify(localReplays));
         } catch (e) { console.error('本地儲存空間不足', e); }
 
-        if (session) {
+        if (session && !S.spectator) {
             historyRecord.user_id = session.id;
             fetch(`${API_URL}/api/save_history`, {
                 method: 'POST',
@@ -1124,57 +1220,173 @@
         setTimeout(() => { S.showResult = true; }, 150);
     }
 
-    // ── 語音（PeerJS）──
-    let localStream = null, myPeer = null;
-    const connectedPeers = new Set();
+    // ── 語音（原生 WebRTC，信令走我們自己的 socket.io）──
+    // 以前用 PeerJS 的公用伺服器配對，那台常常連不上，而且要雙方都開麥才聽得到。
+    // 現在：開麥的人對房內每個人各建一條「單向送出」連線；沒開麥的人（包括觀戰者）也聽得到。
+    // 雙方都開麥時就是兩條方向相反的連線，不會互撥打架。
+    const RTC_CONFIG = {
+        iceServers: [
+            { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }
+            // 有 TURN 伺服器的話加在這裡（不同電信／公司網路互連時才需要）：
+            // { urls: 'turn:你的網域:3478', username: '...', credential: '...' }
+        ]
+    };
+    let localStream = null;
+    const outPCs = new Map();   // 對方 sid → 我送聲音給他的連線
+    const inPCs = new Map();    // 對方 sid → 他送聲音給我的連線
+    const talkerNames = new Map();
+    const blockedAudio = new Set();
+
+    function vsend(type, data, to) {
+        if (socket) socket.emit('voice_signal', { room_code: roomCode, type, data: data || null, to: to || null });
+    }
+    function voiceOnJoined() {
+        vsend('hello');                                                    // 讓正在講話的人來接我
+        if (localStream) vsend('talk-start', { name: myName || '玩家' });  // 自己重連：重新通知大家
+    }
+    function newPC(peer, dir) {
+        const pc = new RTCPeerConnection(RTC_CONFIG);
+        pc._pending = [];
+        pc.onicecandidate = (e) => { if (e.candidate) vsend('ice', { dir, c: e.candidate.toJSON() }, peer); };
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'failed') {
+                console.warn('語音連線失敗', peer, dir);
+                if (dir === 'in') systemMsg('⚠️ 語音連不上（網路環境可能擋住點對點連線），請對方重開麥克風試試。');
+                closePC(dir === 'out' ? outPCs : inPCs, peer);
+            }
+        };
+        return pc;
+    }
+    async function flushIce(pc) {
+        for (const c of pc._pending.splice(0)) await pc.addIceCandidate(c).catch(() => {});
+    }
+    function closePC(map, peer) {
+        const pc = map.get(peer);
+        if (pc) { try { pc.close(); } catch (e) {} map.delete(peer); }
+        if (map === inPCs) {
+            const a = document.getElementById(`audio-${peer}`);
+            if (a) { blockedAudio.delete(a); a.remove(); }
+        }
+    }
+    async function offerTo(peer) {
+        if (!localStream || !peer || peer === socket.id) return;
+        closePC(outPCs, peer);
+        const pc = newPC(peer, 'out');
+        outPCs.set(peer, pc);
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+        await pc.setLocalDescription(await pc.createOffer());
+        vsend('offer', { sdp: pc.localDescription.toJSON(), name: myName || '玩家' }, peer);
+    }
+    async function acceptOffer(peer, data) {
+        closePC(inPCs, peer);
+        const pc = newPC(peer, 'in');
+        inPCs.set(peer, pc);
+        if (data.name) talkerNames.set(peer, data.name);
+        pc.ontrack = (e) => playRemote(peer, e.streams[0] || new MediaStream([e.track]));
+        await pc.setRemoteDescription(data.sdp);
+        await flushIce(pc);
+        await pc.setLocalDescription(await pc.createAnswer());
+        vsend('answer', { sdp: pc.localDescription.toJSON() }, peer);
+    }
+    function playRemote(peer, stream) {
+        let audio = document.getElementById(`audio-${peer}`);
+        if (!audio) {
+            audio = document.createElement('audio');
+            audio.id = `audio-${peer}`;
+            audio.autoplay = true;
+            audio.setAttribute('playsinline', '');
+            document.getElementById('audio-container').appendChild(audio);
+            systemMsg(`🔊 正在收聽 ${talkerNames.get(peer) || '對手'} 的語音`);
+        }
+        audio.srcObject = stream;
+        // 瀏覽器規定使用者還沒點過頁面前不能自動出聲，被擋就等下一次點擊再播
+        audio.play().catch(() => {
+            blockedAudio.add(audio);
+            showToast('🔊 有人開了語音，點一下畫面就能聽到');
+        });
+    }
+    document.addEventListener('pointerdown', () => {
+        blockedAudio.forEach(a => a.play().catch(() => {}));
+        blockedAudio.clear();
+    });
+
+    async function onVoiceSignal(msg) {
+        const { from, type, data } = msg || {};
+        if (!from || from === socket.id) return;
+        try {
+            switch (type) {
+                case 'hello':
+                case 'listen':
+                    if (localStream) await offerTo(from);
+                    break;
+                case 'talk-start':
+                    if (data && data.name) talkerNames.set(from, data.name);
+                    vsend('listen', null, from);   // 不管自己有沒有開麥都要收聽
+                    break;
+                case 'offer':
+                    await acceptOffer(from, data);
+                    break;
+                case 'answer': {
+                    const pc = outPCs.get(from);
+                    if (pc && pc.signalingState === 'have-local-offer') {
+                        await pc.setRemoteDescription(data.sdp);
+                        await flushIce(pc);
+                    }
+                    break;
+                }
+                case 'ice': {
+                    // 對方是送聲音那端（out）→ 套在我的接收連線上，反之亦然
+                    const pc = (data.dir === 'out' ? inPCs : outPCs).get(from);
+                    if (!pc) break;
+                    if (pc.remoteDescription) await pc.addIceCandidate(data.c).catch(() => {});
+                    else pc._pending.push(data.c);
+                    break;
+                }
+                case 'talk-stop':
+                    closePC(inPCs, from);
+                    break;
+                case 'bye':
+                    closePC(inPCs, from);
+                    closePC(outPCs, from);
+                    break;
+            }
+        } catch (err) {
+            console.error('voice signal error', type, err);
+        }
+    }
 
     async function toggleMic() {
+        if (S.spectator) return;
         if (!S.micOn) {
             if (window.location.protocol === 'file:') {
                 showToast('麥克風無法在本地檔案 (file://) 使用，請用 Live Server 或 https。');
                 return;
             }
+            if (!navigator.mediaDevices || !window.RTCPeerConnection) {
+                showToast('這個瀏覽器不支援語音，請改用 Chrome / Edge / Safari。');
+                return;
+            }
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false
+                });
             } catch (err) {
                 console.error('Mic error:', err);
-                showToast('無法存取麥克風！請確認網址為 https 並已允許權限。');
+                showToast(err && err.name === 'NotAllowedError'
+                    ? '麥克風權限被拒絕了，請點網址列左邊的鎖頭開啟。'
+                    : '找不到可用的麥克風！');
                 return;
             }
             S.micOn = true;
-            myPeer = new Peer();
-            myPeer.on('open', (id) => emitChat(`[SYS_PEER_ID]:${id}`, session ? session.name : '玩家', S.myOnlineColor));
-            myPeer.on('call', (call) => { connectedPeers.add(call.peer); call.answer(localStream); handleCallStream(call); });
-            myPeer.on('error', (err) => {
-                console.error('PeerJS error:', err);
-                systemMsg(`⚠️ 語音連線發生問題（${err.type || err.message}），請重新開關麥克風。`);
-            });
-            systemMsg('🎤 麥克風已開啟。');
+            vsend('talk-start', { name: myName || '玩家' });
+            systemMsg('🎤 麥克風已開啟，房內所有人都聽得到你。');
         } else {
+            [...outPCs.keys()].forEach(peer => closePC(outPCs, peer));
             if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-            if (myPeer) { myPeer.destroy(); myPeer = null; }
             S.micOn = false;
-            connectedPeers.clear();
-            document.getElementById('audio-container').innerHTML = '';
+            vsend('talk-stop');
             systemMsg('🔇 麥克風已關閉。');
         }
-    }
-    function handleCallStream(call) {
-        call.on('stream', (remoteStream) => {
-            if (!document.getElementById(`audio-${call.peer}`)) {
-                const audio = document.createElement('audio');
-                audio.id = `audio-${call.peer}`;
-                audio.srcObject = remoteStream;
-                audio.autoplay = true;
-                document.getElementById('audio-container').appendChild(audio);
-            }
-        });
-        call.on('close', () => {
-            connectedPeers.delete(call.peer);
-            const audio = document.getElementById(`audio-${call.peer}`);
-            if (audio) audio.remove();
-        });
-        call.on('error', (err) => { console.error('Call error:', err); connectedPeers.delete(call.peer); });
     }
 
     // ── 其他介面動作 ──
@@ -1188,7 +1400,10 @@
         if (document.fullscreenElement) document.exitFullscreen();
         else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
     }
-    document.addEventListener('fullscreenchange', () => { S.fullscreen = !!document.fullscreenElement; });
+    document.addEventListener('fullscreenchange', () => {
+        S.fullscreen = !!document.fullscreenElement;
+        S.hudCollapsed = S.fullscreen;   // 進入全螢幕時收起右下按鈕，離開時恢復
+    });
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') { S.showResult = false; S.confirmReset = false; S.confirmBreak = false; if (S.chatOpen) toggleChat(); }
     });
@@ -1198,6 +1413,8 @@
         setup() {
             const curColor = computed(() => currentColor());
             const phaseLabel = computed(() => phaseNames[S.phase] || '');
+            // 規則 2 放置期：輪到的人這次要放哪種棋
+            const curShape = computed(() => S.phase === 'placement' && curColor.value ? nextShape(curColor.value) : undefined);
 
             const isAITurn = computed(() => isVsAI && curColor.value === aiColor && S.phase !== 'game_over');
             const canUseBreaker = computed(() => {
@@ -1213,12 +1430,12 @@
                 const moveSet = new Set(), wallSet = new Set();
                 if (S.phase === 'movement' && S.selectedPieceIndex !== -1) {
                     const p = S.pieces[S.selectedPieceIndex];
-                    if (p) getValidMoves(p.r, p.c).forEach(m => moveSet.add(key(m.r, m.c)));
+                    if (p) movesForPiece(p).forEach(m => moveSet.add(key(m.r, m.c)));
                 } else if (S.phase === 'wall_building') {
                     const p = S.pieces[S.movedPieceIndex];
                     if (p) getValidWalls(p.r, p.c).forEach(w => wallSet.add(key(w.r, w.c)));
                 } else if (S.phase === 'wall_breaking') {
-                    S.walls.forEach((col, k) => { if (col === cc) wallSet.add(k); });
+                    breakableWalls(cc).forEach(k => wallSet.add(k));
                 }
                 const pieceAt = new Map();
                 S.pieces.forEach((p, i) => pieceAt.set(key(p.r, p.c), i));
@@ -1235,7 +1452,7 @@
                             if (S.phase === 'game_over' && S.territories.has(k)) cls.push('territory-' + S.territories.get(k));
                             if (pieceAt.has(k)) {
                                 const i = pieceAt.get(k);
-                                piece = { color: S.pieces[i].color, selected: i === S.selectedPieceIndex || i === S.movedPieceIndex };
+                                piece = { color: S.pieces[i].color, shape: S.pieces[i].shape, selected: i === S.selectedPieceIndex || i === S.movedPieceIndex };
                             }
                         } else if (r % 2 === 1 && c % 2 === 1) {
                             type = 'intersection'; cls.push('intersection');
@@ -1243,7 +1460,7 @@
                             type = 'wall'; cls.push(r % 2 === 1 ? 'wall-h' : 'wall-v');
                             if (S.walls.has(k)) {
                                 cls.push('wall-placed', 'wall-' + S.walls.get(k));
-                                if (S.phase === 'wall_breaking' && S.walls.get(k) !== cc) cls.push('wall-dim');
+                                if (S.phase === 'wall_breaking' && !wallSet.has(k)) cls.push('wall-dim');
                             }
                             if (wallSet.has(k)) cls.push('highlight-wall');
                         }
@@ -1285,7 +1502,7 @@
 
             return {
                 S, colorMap, quickMsgs, TURN_TIME_LIMIT, isOnline,
-                curColor, phaseLabel, canUseBreaker, cells,
+                curColor, curShape, phaseLabel, canUseBreaker, cells,
                 mentionOptions, pickMention, splitMention, onCellClick,
                 nameOf: (c) => getDisplayName(c),
                 tagOf: (c) => suffixOf(c),

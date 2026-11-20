@@ -6,7 +6,7 @@
 <title>WALL GO — 遊戲大廳</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Londrina+Solid:wght@300;400;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 <style>
 :root{
@@ -36,8 +36,8 @@
   --color-green:#7fa93f;
 
   /* 字體：粗體大寫做標題，內文中文用思源黑體 */
-  --serif:"Archivo","Noto Sans TC","Microsoft JhengHei",sans-serif;
-  --display:"Anton","Archivo","Noto Sans TC",sans-serif;
+  --serif:"Londrina Solid","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  --display:"Londrina Solid","Noto Sans TC",sans-serif;
   --bw:2.5px;
 }
 *{box-sizing:border-box}
@@ -244,7 +244,8 @@ body{
 .modal.rules .stat i{white-space:nowrap}
 
 .opt{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
-.modal .sub+.opt{margin-top:0}   /* 說明段落移除後，副標與選項之間不再補間距 */
+.modal .sub+.opt{margin-top:0}
+.optlbl{margin:16px 0 0;font-size:10.5px;font-weight:700;letter-spacing:.18em;color:var(--ink-2)}   /* 說明段落移除後，副標與選項之間不再補間距 */
 .chip{padding:8px 16px;border:2px solid var(--outline);border-radius:999px;background:var(--cream);
   color:var(--ink);font-family:var(--serif);font-size:13px;font-weight:600;cursor:pointer;transition:.16s}
 .chip:hover{background:var(--yellow)}
@@ -325,11 +326,11 @@ body{
 .intro-skip{position:fixed;right:28px;bottom:28px;z-index:21;display:none;align-items:center;gap:10px;
   padding:10px 14px 10px 20px;border-radius:999px;border:3px solid var(--outline);
   background:var(--cream-hi);color:var(--outline);cursor:pointer;
-  font:700 14px/1 var(--font-sans,'Archivo',sans-serif);letter-spacing:.16em;
+  font:700 14px/1 var(--font-sans,'Londrina Solid',sans-serif);letter-spacing:.16em;
   box-shadow:0 4px 0 rgba(27,27,27,.2);transition:background .16s,translate .14s}
 .intro-skip.on{display:flex}
 .intro-skip:hover{background:var(--yellow);translate:0 -2px}
-.intro-skip kbd{font:600 11px/1 var(--font-sans,'Archivo',sans-serif);letter-spacing:.06em;
+.intro-skip kbd{font:600 11px/1 var(--font-sans,'Londrina Solid',sans-serif);letter-spacing:.06em;
   padding:5px 8px;border-radius:7px;border:2px solid var(--outline);background:var(--cream)}
 
 .auth{position:fixed;inset:0;display:none;place-items:center;padding:20px;z-index:15;overflow-y:auto}
@@ -380,7 +381,8 @@ body{
   color:var(--ink);font-family:var(--display);font-size:26px;font-weight:400;letter-spacing:.18em;
   text-align:center;outline:none}
 .joinbar input:focus{background:var(--cream-hi)}
-.joinbar .btn{width:auto;padding:0 26px;white-space:nowrap}
+.joinbar .btn{width:auto;padding:0 20px;white-space:nowrap}
+.joinbar input{min-width:0}
 
 /* 戰績 */
 .hitem{border:2px solid var(--outline);border-radius:16px;padding:13px 15px;background:var(--cream);
@@ -607,6 +609,11 @@ body{
       <button class="chip" data-val="3">3 人</button>
       <button class="chip" data-val="4">4 人</button>
     </div>
+    <p class="optlbl">規則版本</p>
+    <div class="opt rule-chips" id="solo-rules">
+      <button class="chip" data-rule="1" title="每人 2 顆一般棋子">牆壁圍棋 1</button>
+      <button class="chip" data-rule="2" title="每人 1 圓 1 方，方形只能直走，破牆只能破棋子旁邊">牆壁圍棋 2</button>
+    </div>
     <button class="btn gold" style="margin-top:18px" onclick="startGame()">開始單機遊戲</button>
   </div>
 </div>
@@ -617,18 +624,24 @@ body{
     <div id="room-ui-main">
       <button class="modal-x" onclick="closeModal('room-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <h3>Online</h3><p class="sub">線上對戰大廳</p>
-      <button class="btn gold" onclick="createRoom()">建立新房間</button>
+      <p class="optlbl" style="margin-top:0">規則版本</p>
+    <div class="opt rule-chips" id="room-rules">
+      <button class="chip" data-rule="1" title="每人 2 顆一般棋子">牆壁圍棋 1</button>
+      <button class="chip" data-rule="2" title="每人 1 圓 1 方，方形只能直走，破牆只能破棋子旁邊">牆壁圍棋 2</button>
+    </div>
+      <button class="btn gold" style="margin-top:14px" onclick="createRoom()">建立新房間</button>
       <hr class="divider">
-      <p class="hint" style="margin:0 0 10px">或輸入 4 位數代碼加入好友的房間</p>
+      <p class="hint" style="margin:0 0 10px">或輸入 4 位數代碼加入好友的房間，已開局的房間可以觀戰</p>
       <div class="joinbar">
         <input type="text" id="join-room-input" placeholder="代碼" maxlength="4">
         <button class="btn" onclick="joinRoom()">加入</button>
+        <button class="btn" onclick="spectateRoom()">觀戰</button>
       </div>
     </div>
 
     <div id="room-ui-waiting" style="display:none">
       <h3>Waiting room</h3><p class="sub">房間等候室</p>
-      <p class="hint">已成功入座，請將此代碼分享給對手：</p>
+      <p class="hint">已成功入座，請將此代碼分享給對手：<b id="room-rule-label"></b></p>
       <div class="code" id="display-room-code">0000</div>
       <div class="grouplbl">房內玩家（<span id="room-player-count">1</span>/4）</div>
       <div class="rlist" id="room-players-list"></div>
@@ -745,6 +758,11 @@ body{
     <div class="stat"><span>四、破牆</span><i>每人一次，可打破任何一道牆</i></div>
     <div class="stat"><span>五、限時</span><i>每回合 90 秒，超時由伺服器代打</i></div>
     <div class="stat"><span>六、獲勝</span><i>佔領最多純淨獨占領地者勝</i></div>
+    <p class="optlbl" style="margin-top:18px">牆壁圍棋 2 的差異</p>
+    <div class="stat"><span>棋子</span><i>每人 1 顆圓形、1 顆方形（先放圓、再放方）</i></div>
+    <div class="stat"><span>圓形棋</span><i>同版本 1：走 1～2 步，可以轉彎</i></div>
+    <div class="stat"><span>方形棋</span><i>只能上下左右直走 1～2 步，不能轉彎</i></div>
+    <div class="stat"><span>破牆</span><i>只能打破自己棋子四周的牆</i></div>
     <button class="close" onclick="closeModal('rules-modal')">我準備好了</button>
   </div>
 </div>
@@ -1496,8 +1514,20 @@ function setPlayers(val){
 document.querySelectorAll('#solo-chips .chip').forEach(c=>{
   c.onclick=()=>setPlayers(c.dataset.val === 'ai' ? 'ai' : Number(c.dataset.val));
 });
-function openSoloModal(){ setPlayers(selectedPlayers); openModal('solo-modal'); }
-function startGame(){ window.location.href = `game.html?players=${selectedPlayers}`; }
+function openSoloModal(){ setPlayers(selectedPlayers); setRule(selectedRule); openModal('solo-modal'); }
+function startGame(){ window.location.href = `game.html?players=${selectedPlayers}&rules=${selectedRule}`; }
+
+/* 規則版本：1 = 原版，2 = 圓方棋 */
+let selectedRule = localStorage.getItem('wallGoRule') === '2' ? 2 : 1;
+function setRule(val){
+  selectedRule = Number(val) === 2 ? 2 : 1;
+  localStorage.setItem('wallGoRule', String(selectedRule));
+  document.querySelectorAll('.rule-chips .chip').forEach(c=>{
+    c.setAttribute('aria-pressed', Number(c.dataset.rule) === selectedRule ? 'true' : 'false');
+  });
+}
+document.querySelectorAll('.rule-chips .chip').forEach(c=>{ c.onclick=()=>setRule(c.dataset.rule); });
+setRule(selectedRule);
 
 /* ═════════ 線上房間 ═════════ */
 function openRoomModal(){
@@ -1510,7 +1540,7 @@ function createRoom(){
   const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
   const userInfo = { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar };
   currentRoomCode = roomCode;
-  socket.emit('create_room', { room_code: roomCode, user_info: userInfo });
+  socket.emit('create_room', { room_code: roomCode, user_info: userInfo, rules: selectedRule });
 }
 
 function joinRoom(){
@@ -1520,6 +1550,15 @@ function joinRoom(){
   currentRoomCode = roomCode;
   socket.emit('join_room', { room_code: roomCode, user_info: userInfo });
 }
+
+function spectateRoom(){
+  const roomCode = document.getElementById('join-room-input').value.trim();
+  if (roomCode.length !== 4) return toast('請輸入 4 位數字的房間代碼！');
+  socket.emit('spectate_room', { room_code: roomCode });
+}
+socket.on('spectate_ok', (data) => {
+  window.location.href = `game.html?mode=online&room=${data.room_code}&players=${data.player_count}&rules=${data.rules || 1}&spectate=1`;
+});
 
 function leaveRoom(){
   if (currentRoomCode) {
@@ -1531,11 +1570,11 @@ function leaveRoom(){
 
 socket.on('room_created', (data) => {
   currentRoomCode = data.room_code;
-  renderWaitingRoom(data.room_code, data.players);
+  renderWaitingRoom(data.room_code, data.players, data.rules);
 });
 
 socket.on('room_updated', (data) => {
-  if (currentRoomCode === data.room_code) renderWaitingRoom(data.room_code, data.players);
+  if (currentRoomCode === data.room_code) renderWaitingRoom(data.room_code, data.players, data.rules);
 });
 
 socket.on('join_error', (data) => {
@@ -1543,12 +1582,13 @@ socket.on('join_error', (data) => {
   currentRoomCode = null;
 });
 
-function renderWaitingRoom(code, players){
+function renderWaitingRoom(code, players, rules){
   openModal('room-modal');
   document.getElementById('room-ui-main').style.display = 'none';
   document.getElementById('room-ui-waiting').style.display = 'block';
 
   document.getElementById('display-room-code').innerText = code;
+  document.getElementById('room-rule-label').innerText = `（牆壁圍棋 ${rules === 2 ? 2 : 1}）`;
   document.getElementById('room-player-count').innerText = players.length;
 
   const list = document.getElementById('room-players-list');
@@ -1569,7 +1609,7 @@ function startOnlineGame(){
 }
 
 socket.on('game_started', (data) => {
-  window.location.href = `game.html?mode=online&room=${data.room_code}&players=${data.player_count}`;
+  window.location.href = `game.html?mode=online&room=${data.room_code}&players=${data.player_count}&rules=${data.rules || 1}`;
 });
 
 /* ═════════ 登入 / 註冊 ═════════ */
