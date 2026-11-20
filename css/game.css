@@ -30,8 +30,8 @@
     --pc-yellow: #e8b12e; --pc-yellow-top: #f5c94f; --pc-yellow-side: #bd8a16;
     --pc-green: #4c8a45;  --pc-green-top: #5fa456;  --pc-green-side: #376630;
 
-    --font-display: 'Londrina Solid', 'Noto Sans TC', sans-serif;
-    --font-sans: 'Londrina Solid', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+    --font-display: 'Titan One', 'Noto Sans TC', sans-serif;
+    --font-sans: 'Fredoka', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
     --bw: 2.5px;
     --lift: 0 4px 0 rgba(27, 27, 27, .2);
 
@@ -182,8 +182,9 @@ button { font-family: var(--font-sans); color: var(--outline); }
 
 .highlight { background-color: var(--sky) !important; cursor: pointer; box-shadow: inset 0 0 0 3px var(--outline); }
 /* 候選牆位只畫在自己那一段，兩端各內縮一點，四個角落不會互相重疊 */
-.wall-h.highlight-wall:not(.wall-placed)::after { left: .5cqw; right: .5cqw; }
-.wall-v.highlight-wall:not(.wall-placed)::after { top: .5cqw; bottom: .5cqw; }
+/* 候選牆位：選擇階段是平的、置中在格線上，兩端內縮不互相重疊；放下之後才畫成立體 */
+.wall-h.highlight-wall:not(.wall-placed)::after { left: .6cqw; right: .6cqw; top: calc(50% - .9cqw); height: 1.8cqw; border-radius: .5cqw; }
+.wall-v.highlight-wall:not(.wall-placed)::after { top: .6cqw; bottom: .6cqw; left: calc(50% - .9cqw); width: 1.8cqw; border-radius: .5cqw; }
 .highlight-wall:not(.wall-placed)::after { background: var(--pink); opacity: .75; outline: 2px solid var(--outline); outline-offset: -1px; }
 .highlight-wall:not(.wall-placed):hover::after { background: var(--yellow); opacity: 1; }
 /* 破牆階段：別人的牆變灰，自己的牆維持原色（就是可以拆的那些） */
@@ -417,3 +418,6 @@ button { font-family: var(--font-sans); color: var(--outline); }
     .stage { left: 0; right: 0; }
     .chat { right: 12px; width: calc(100vw - 24px); height: 80dvh; }
 }
+
+/* Titan One 只有一種粗細，關掉瀏覽器自動加粗，避免字糊在一起 */
+html { font-synthesis-weight: none; }

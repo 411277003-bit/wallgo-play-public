@@ -26,8 +26,8 @@
   --color-green:#7fa93f;
 
   /* 字體：粗體大寫做標題，內文中文用思源黑體 */
-  --serif:"Londrina Solid","Noto Sans TC","Microsoft JhengHei",sans-serif;
-  --display:"Londrina Solid","Noto Sans TC",sans-serif;
+  --serif:"Fredoka","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  --display:"Titan One","Noto Sans TC",sans-serif;
   --bw:2.5px;
 }
 *{box-sizing:border-box}
@@ -314,11 +314,11 @@ body{
 .intro-skip{position:fixed;right:28px;bottom:28px;z-index:21;display:none;align-items:center;gap:10px;
   padding:10px 14px 10px 20px;border-radius:999px;border:3px solid var(--outline);
   background:var(--cream-hi);color:var(--outline);cursor:pointer;
-  font:700 14px/1 var(--font-sans,'Londrina Solid',sans-serif);letter-spacing:.16em;
+  font:700 14px/1 var(--font-sans,'Fredoka',sans-serif);letter-spacing:.16em;
   box-shadow:0 4px 0 rgba(27,27,27,.2);transition:background .16s,translate .14s}
 .intro-skip.on{display:flex}
 .intro-skip:hover{background:var(--yellow);translate:0 -2px}
-.intro-skip kbd{font:600 11px/1 var(--font-sans,'Londrina Solid',sans-serif);letter-spacing:.06em;
+.intro-skip kbd{font:600 11px/1 var(--font-sans,'Fredoka',sans-serif);letter-spacing:.06em;
   padding:5px 8px;border-radius:7px;border:2px solid var(--outline);background:var(--cream)}
 
 .auth{position:fixed;inset:0;display:none;place-items:center;padding:20px;z-index:15;overflow-y:auto}
@@ -447,3 +447,6 @@ body{
   .brand h1{font-size:44px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Titan One 只有一種粗細，關掉瀏覽器自動加粗，避免字糊在一起 */
+html { font-synthesis-weight: none; }
