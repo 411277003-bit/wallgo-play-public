@@ -1,10 +1,11 @@
 // 對局頁進入點：畫面按鈕、Vue 元件組裝、啟動
-import { TURN_TIME_LIMIT } from '../config.js';
+import '../config.js';
 import { boardSize, isOnline, isVsAI, aiColor, colorMap, phaseNames, quickMsgs, S, key, currentColor, suffixOf, getDisplayName, getValidWalls, nextShape, movesForPiece, breakableWalls } from './state.js';
 import { sendMsg, sendChat, mentionOptions, pickMention, splitMention } from './chat.js';
 import { initOnline } from './online.js';
 import { resetGame, handleCellClick, handleWallClick, toggleWallBreaker } from './flow.js';
 import { toggleMic } from './voice.js';
+const { TURN_TIME_LIMIT } = window.WALLGO_CONFIG;
 const { createApp, computed } = Vue;
 
 // ── 其他介面動作 ──

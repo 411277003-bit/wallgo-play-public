@@ -1,8 +1,9 @@
 // 語音
-import { RTC_CONFIG } from '../config.js';
+import '../config.js';
 import { roomCode, myName, S, showToast } from './state.js';
 import { systemMsg } from './chat.js';
 import { socket } from './online.js';
+const { RTC_CONFIG } = window.WALLGO_CONFIG;
 // ── 語音（原生 WebRTC，信令走我們自己的 socket.io）──
 // 以前用 PeerJS 的公用伺服器配對，那台常常連不上，而且要雙方都開麥才聽得到。
 // 現在：開麥的人對房內每個人各建一條「單向送出」連線；沒開麥的人（包括觀戰者）也聽得到。

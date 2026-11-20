@@ -1,10 +1,11 @@
 // 對局流程：開局、計時、點棋盤、建牆／破牆、換手、結算
 import * as Rules from '../shared/rules.js';
-import { API_URL, TURN_TIME_LIMIT } from '../config.js';
+import '../config.js';
 import { isOnline, isVsAI, playerCount, aiColor, session, allColors, colorMap, S, plain, key, currentColor, isMe, suffixOf, getDisplayName, showToast, getPieceIndexAt, getValidWalls, newPiece, movesForPiece, breakableWalls } from './state.js';
 import { systemMsg } from './chat.js';
 import { broadcastGameState } from './online.js';
 import { executeAILogic, checkAITurn } from './ai.js';
+const { API_URL, TURN_TIME_LIMIT } = window.WALLGO_CONFIG;
 
 let moveHistory = [];
 let clockInterval = null;

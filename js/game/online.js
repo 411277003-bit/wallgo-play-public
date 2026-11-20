@@ -1,9 +1,10 @@
 // 連線對局：socket 連線、斷線重連重新入房、狀態同步、觀戰名單
-import { API_URL } from '../config.js';
+import '../config.js';
 import { roomCode, isOnline, wantSpectate, session, S, plain, key } from './state.js';
 import { appendChatMessage } from './chat.js';
 import { saveHistoryStep, ensureClock, autoCheckEndGame } from './flow.js';
 import { voiceOnJoined, onVoiceSignal } from './voice.js';
+const { API_URL } = window.WALLGO_CONFIG;
 
 export let socket = null;
 let lastVersion = 0;   // 伺服器狀態版本，比這個舊的 update_board 一律丟掉
