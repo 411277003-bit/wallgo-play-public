@@ -10,423 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- 英文字母用 Londrina Solid（手剪紙風、粗黑不規則），中文沒有對應字形會自動落到 Noto Sans TC -->
     <link href="https://fonts.googleapis.com/css2?family=Londrina+Solid:wght@300;400;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            /* ── 淡天藍底 × 磚紅 × 米白紙 × 黑線條 ── */
-            --bg: #cfe4f1;
-            --orange: #b8553d;
-            --orange-deep: #96432f;
-            --cream: #f5ead3;
-            --cream-hi: #fbf4e4;
-            --cream-lo: #e6d9bb;
-            --outline: #1b1b1b;
-            --pink: #efa39c;
-            --sky: #7db8dd;
-            --blue: #4a92c4;
-            --green: #7fa93f;
-            --yellow: #f2c14a;
-            --red: #b8553d;
-            --text-sub: #6b6659;
-
-            --color-red: #d94f2b;
-            --color-blue: #4a92c4;
-            --color-yellow: #e0a92a;
-            --color-green: #7fa93f;
-
-            /* 棋盤：米白方格紙＋磚紅外框 */
-            --sq-light: #f7f1e3;
-            --sq-line: #a9c8dc;
-            --sq-rim: #b8553d;
-            --pc-red: #c4442d;    --pc-red-top: #d8583f;    --pc-red-side: #9e3320;
-            --pc-blue: #2c4a7c;   --pc-blue-top: #3f66a3;   --pc-blue-side: #1d3355;
-            --pc-yellow: #e8b12e; --pc-yellow-top: #f5c94f; --pc-yellow-side: #bd8a16;
-            --pc-green: #4c8a45;  --pc-green-top: #5fa456;  --pc-green-side: #376630;
-
-            --font-display: 'Londrina Solid', 'Noto Sans TC', sans-serif;
-            --font-sans: 'Londrina Solid', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
-            --bw: 2.5px;
-            --lift: 0 4px 0 rgba(27, 27, 27, .2);
-
-            /* 依螢幕大小縮放：按鈕、聊天室寬度都跟著視窗走，全螢幕在大螢幕上也不會顯得太小 */
-            --edge: clamp(12px, 2vmin, 28px);
-            --btn: clamp(52px, 7vmin, 88px);
-            --chat-w: clamp(300px, 26vw, 440px);
-            /* 上下 HUD 預留高度，棋盤落在兩者之間；左右預留一顆按鈕寬 */
-            --hud-top: calc(var(--btn) + var(--edge) + 6px);
-            --hud-bot: var(--edge);
-            --side: calc(var(--btn) + var(--edge) * 2);
-        }
-
-        * { box-sizing: border-box; }
-        [v-cloak] { display: none; }
-        html, body { height: 100%; }
-
-        /* ── 桌面：天藍底＋方格線，像把棋盤擺在格紋桌布上 ── */
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: var(--font-sans);
-            line-height: 1.5;
-            letter-spacing: .015em;
-            color: var(--outline);
-            background-color: var(--bg);
-            background-image:
-                linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px),
-                linear-gradient(rgba(255,255,255,.22) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,.22) 1px, transparent 1px);
-            background-size: 112px 112px, 112px 112px, 28px 28px, 28px 28px;
-            background-position: center center;
-        }
-        .vignette {
-            position: fixed; inset: 0; pointer-events: none; z-index: 0;
-            background:
-              radial-gradient(70% 60% at 50% 48%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 70%),
-              radial-gradient(120% 95% at 50% 50%, rgba(0,0,0,0) 50%, rgba(40,80,110,.14) 85%, rgba(40,80,110,.26) 100%);
-        }
-        .grain {
-            position: fixed; inset: -50%; pointer-events: none; z-index: 0;
-            opacity: .1; mix-blend-mode: multiply;
-            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.55'/></svg>");
-        }
-
-        button { font-family: var(--font-sans); color: var(--outline); }
-        .ico { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor;
-               stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-        .ico.fill { fill: currentColor; stroke: none; }
-
-        /* ══════════ 棋盤區 ══════════ */
-        .stage {
-            position: fixed; z-index: 1;
-            top: var(--hud-top); bottom: var(--hud-bot); left: 0; right: 0;
-            display: grid; place-items: center;
-            container-type: size;
-            transition: right .4s cubic-bezier(.175, .885, .32, 1.275);
-        }
-        /* 寬螢幕：聊天室打開時，棋盤與上方回合列讓出右側空間，不被蓋住。
-           寬度不夠（< 1000px）時讓出去棋盤會太小，改成聊天室直接疊在棋盤上 */
-        @media (min-width: 1000px) {
-            body.chat-open .stage { right: calc(var(--chat-w) + var(--edge)); }
-            body.chat-open .hud-top { left: calc((100vw - var(--chat-w) - var(--edge)) / 2); }
-            /* 右下的全螢幕／麥克風／聊天鈕也要讓位，否則會被聊天室蓋住 */
-            body.chat-open .hud-br { right: calc(var(--chat-w) + var(--edge) * 2); }
-        }
-        .board {
-            width: min(100cqh, 100cqw - 2 * var(--side));
-            aspect-ratio: 1 / 1;
-            container-type: inline-size;
-            background: var(--sq-light);
-            border: clamp(10px, 3.4cqmin, 30px) solid var(--sq-rim);
-            box-shadow: 0 22px 50px rgba(40, 70, 95, .35), 0 0 0 3px var(--outline);
-            display: grid;
-            grid-template-columns: repeat(6, 1fr 0) 1fr;
-            grid-template-rows: repeat(6, 1fr 0) 1fr;
-        }
-        .grid-item { display: flex; justify-content: center; align-items: center; transition: background-color .2s; }
-        .cell { background-color: var(--sq-light); cursor: pointer; box-shadow: inset 0 0 0 .5px var(--sq-line); }
-        .cell:hover { background-color: var(--yellow); }
-        .intersection { background-color: transparent; }
-
-        /* 棋子：扁圓柱（純色柱身＋頂面細環），整顆往上提讓底面圓心落在格子中央 */
-        .piece {
-            position: relative; z-index: 4;
-            width: 52%; height: 70%;
-            transform: translateY(-28%);
-            transition: transform .2s; pointer-events: none;
-            filter: drop-shadow(.8cqw .45cqw 0 rgba(22, 37, 61, .22));
-        }
-        .piece::before {
-            content: ''; position: absolute; left: 0; right: 0; top: 21%; bottom: 0;
-            border: 2px solid #16253d; border-top: none;
-            border-radius: 0 0 50% 50% / 0 0 27% 27%;
-            background: var(--pc-body);
-        }
-        .piece::after {
-            content: ''; position: absolute; left: 0; right: 0; top: 0; height: 43%;
-            border: 2px solid #16253d; border-radius: 50%;
-            background:
-                radial-gradient(closest-side ellipse at 50% 50%, transparent 0 40%, rgba(22, 37, 61, .35) 40% 49%, transparent 49%),
-                var(--pc-top);
-        }
-        /* 規則 2 的方形棋：同一套配色，柱身與頂面改成方角，看起來像一塊積木 */
-        .piece.square::before { border-radius: 0 0 10% 10% / 0 0 6% 6%; top: 18%; }
-        .piece.square::after {
-            height: 38%; border-radius: 14%;
-            background:
-                radial-gradient(closest-side, transparent 0 46%, rgba(22, 37, 61, .3) 46% 56%, transparent 56%),
-                var(--pc-top);
-        }
-        .piece-red    { --pc-body: var(--pc-red);    --pc-top: var(--pc-red-top); }
-        .piece-blue   { --pc-body: var(--pc-blue);   --pc-top: var(--pc-blue-top); }
-        .piece-yellow { --pc-body: var(--pc-yellow); --pc-top: var(--pc-yellow-top); }
-        .piece-green  { --pc-body: var(--pc-green);  --pc-top: var(--pc-green-top); }
-        .piece.selected {
-            transform: translateY(-28%) scale(1.08);
-            filter: drop-shadow(0 0 2px var(--yellow)) drop-shadow(0 0 5px var(--yellow))
-                    drop-shadow(.8cqw .45cqw 0 rgba(22, 37, 61, .22));
-        }
-
-        /* 牆：貼在格線上的細板，::after 頂面、::before 右下暗色側面 */
-        .wall-h, .wall-v { position: relative; pointer-events: none; }
-        .wall-h { height: 4.8cqw; margin: -2.4cqw 0; }
-        .wall-v { width: 4.8cqw;  margin: 0 -2.4cqw; }
-        .wall-h::before, .wall-v::before,
-        .wall-h::after,  .wall-v::after { content: ''; position: absolute; pointer-events: none; }
-        .wall-h::after  { left: -1.93cqw; right: .07cqw; top: .47cqw; height: 1.86cqw; z-index: 3; }
-        .wall-v::after  { top: -1.93cqw; bottom: .07cqw; left: .47cqw; width: 1.86cqw; z-index: 3; }
-        .wall-h::before { left: -1.93cqw; right: -.93cqw; top: .47cqw; height: 2.86cqw; z-index: 2; }
-        .wall-v::before { top: -1.93cqw; bottom: -.93cqw; left: .47cqw; width: 2.86cqw; z-index: 2; }
-        .highlight-wall { pointer-events: auto; cursor: pointer; }
-        .wall-placed::before {
-            background: var(--w-side);
-            clip-path: polygon(0 0, calc(100% - 1cqw) 0, 100% 1cqw, 100% 100%, 1cqw 100%, 0 calc(100% - 1cqw));
-        }
-        .wall-placed::after { background: var(--w-body); }
-        .wall-red    { --w-body: var(--pc-red);    --w-side: var(--pc-red-side); }
-        .wall-blue   { --w-body: var(--pc-blue);   --w-side: var(--pc-blue-side); }
-        .wall-yellow { --w-body: var(--pc-yellow); --w-side: var(--pc-yellow-side); }
-        .wall-green  { --w-body: var(--pc-green);  --w-side: var(--pc-green-side); }
-
-        .territory-red    { background-color: rgba(217, 79, 43, .42) !important; }
-        .territory-blue   { background-color: rgba(74, 146, 196, .42) !important; }
-        .territory-yellow { background-color: rgba(242, 193, 74, .55) !important; }
-        .territory-green  { background-color: rgba(127, 169, 63, .42) !important; }
-
-        .highlight { background-color: var(--sky) !important; cursor: pointer; box-shadow: inset 0 0 0 3px var(--outline); }
-        .highlight-wall:not(.wall-placed)::after { background: var(--pink); opacity: .75; outline: 2px solid var(--outline); outline-offset: -1px; }
-        .highlight-wall:not(.wall-placed):hover::after { background: var(--yellow); opacity: 1; }
-        /* 破牆階段：別人的牆變灰，自己的牆維持原色（就是可以拆的那些） */
-        .wall-placed.wall-dim { --w-body: #c9c3b6; --w-side: #a8a194; }
-
-        /* 小棋子圖示：外層開 container，讓 .piece 的 cqw 單位跟著縮放 */
-        .token { container-type: inline-size; display: flex; align-items: center; justify-content: center; flex: none; }
-        .token .piece { width: 60%; height: 80%; transform: translateY(-14%); }
-
-        /* ══════════ HUD 共用 ══════════ */
-        .hud { position: fixed; z-index: 10; }
-        .card {
-            background: var(--cream-hi);
-            border: var(--bw) solid var(--outline);
-            border-radius: 16px;
-            box-shadow: var(--lift);
-        }
-        .round-btn {
-            width: var(--btn); height: var(--btn); padding: 0; border-radius: 50%;
-            border: var(--bw) solid var(--outline); background: var(--cream-hi);
-            display: grid; place-items: center; cursor: pointer;
-            box-shadow: var(--lift); transition: transform .15s, background .15s;
-        }
-        .round-btn .ico { width: calc(var(--btn) * .42); height: calc(var(--btn) * .42); }
-        .round-btn:hover { background: var(--yellow); transform: translateY(-2px); }
-        .round-btn:active { transform: translateY(1px); }
-
-        /* ── 上方中間：階段旗＋輪到誰＋倒數 ── */
-        .hud-top {
-            top: var(--edge); left: 50%; transform: translateX(-50%);
-            display: flex; align-items: flex-start; gap: 10px;
-            width: max-content; max-width: calc(100vw - 24px);
-            transition: left .4s cubic-bezier(.175, .885, .32, 1.275);
-        }
-        .phase-flag {
-            position: relative; width: clamp(44px, 5.4vmin, 58px); padding: 10px 0 18px; margin-top: calc(-1 * var(--edge));
-            padding-top: calc(var(--edge) + 8px);
-            background: var(--pink);
-            display: flex; flex-direction: column; align-items: center;
-            font-weight: 700; font-size: clamp(14px, 1.9vmin, 19px); line-height: 1.25;
-            clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 9px), 0 100%);
-        }
-        .turn {
-            position: relative; margin: 0 6px;
-            display: flex; align-items: center; gap: 10px;
-            padding: 6px 16px 6px 6px; border-radius: 999px; background: var(--yellow);
-            border: 0; box-shadow: none;
-        }
-        /* 倒數進度：一圈環繞整張膠囊卡外緣，從正上方順時針遞減 */
-        .turn::before {
-            content: ''; position: absolute; pointer-events: none;
-            inset: -5px;
-            border-radius: 999px; padding: 5px;
-            background: conic-gradient(var(--ring) calc(var(--p) * 1turn), rgba(27,27,27,.13) 0);
-            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-            -webkit-mask-composite: xor;
-            mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-            transition: background .3s;
-        }
-        .turn .ring {
-            width: clamp(36px, 5vmin, 56px); height: clamp(36px, 5vmin, 56px); border-radius: 50%; flex: none;
-            display: grid; place-items: center;
-        }
-        .turn .ring .token { width: 90%; height: 90%; }
-        .turn .ring .token .piece { transform: none; }
-        .turn-name { min-width: 0; font-size: clamp(15px, 2.2vmin, 22px); font-weight: 700; max-width: 9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .turn-time {
-            font-family: var(--font-display); font-weight: 900; font-size: clamp(26px, 3.6vmin, 40px); line-height: 1; min-width: 1.5em; text-align: right;
-            font-variant-numeric: tabular-nums; white-space: nowrap;
-        }
-        .turn-time small { font-family: var(--font-sans); font-size: 12px; font-weight: 700; margin-left: 2px; }
-        .turn.low .turn-time { color: var(--red); animation: tick 1s steps(1) infinite; }
-        @keyframes tick { 50% { opacity: .35; } }
-
-        /* ── 左上：選單＋觀戰人數 ── */
-        .hud-tl { top: var(--edge); left: var(--edge); display: flex; align-items: center; gap: 10px; }
-        .spec-chip {
-            display: inline-flex; align-items: center; gap: 6px; height: calc(var(--btn) * .62);
-            padding: 0 14px; border-radius: 999px; font-weight: 700; font-size: clamp(13px, 1.8vmin, 17px);
-            white-space: nowrap; cursor: default;
-        }
-        .spec-chip .ico { width: 1.3em; height: 1.3em; }
-        .spec-chip.me { background: var(--sky); }
-        .rule-chip { background: var(--pink); }
-
-
-        /* ── 右下：大方鈕（全螢幕、聊天、語音）── */
-        .hud-br {
-            right: var(--edge); bottom: var(--edge);
-            display: flex; flex-direction: column; gap: calc(var(--btn) * .2);
-            transition: right .4s cubic-bezier(.175, .885, .32, 1.275);
-        }
-        .big-btn {
-            position: relative; width: var(--btn); height: var(--btn); padding: 0; border-radius: 50%;
-            border: var(--bw) solid var(--outline); background: var(--cream-hi);
-            display: grid; place-items: center; cursor: pointer;
-            box-shadow: var(--lift); transition: transform .15s, background .15s;
-        }
-        .big-btn .ico { width: calc(var(--btn) * .42); height: calc(var(--btn) * .42); }
-        .big-btn:hover { background: var(--yellow); transform: translateY(-2px); }
-        .big-btn:active { transform: translateY(1px); }
-        .big-btn.breaker { background: var(--red); color: var(--cream-hi); }
-        .big-btn.breaker:hover:not(:disabled) { background: #cc6a50; }
-        .big-btn.breaker.on { background: var(--yellow); color: var(--outline); }
-        .big-btn.breaker:disabled { background: var(--cream-lo); color: #a8a396; border-color: rgba(27,27,27,.3);
-                                    cursor: not-allowed; box-shadow: none; transform: none; }
-        .big-btn.top-breaker { width: calc(var(--btn) * .8); height: calc(var(--btn) * .8); border-radius: 50%; }
-        .big-btn.top-breaker .ico { width: calc(var(--btn) * .44); height: calc(var(--btn) * .44); }
-        .big-btn.hud-toggle { width: calc(var(--btn) * .78); height: calc(var(--btn) * .78); align-self: flex-end; }
-        .big-btn.mic-on { background: var(--green); color: var(--cream-hi); animation: pulse-mic 1.5s infinite; }
-        @keyframes pulse-mic {
-            0% { box-shadow: 0 0 0 0 rgba(127, 169, 63, .55); }
-            70% { box-shadow: 0 0 0 16px rgba(127, 169, 63, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(127, 169, 63, 0); }
-        }
-        .badge {
-            position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px; padding: 0 6px;
-            border-radius: 999px; background: var(--red); color: var(--cream-hi);
-            border: 2px solid var(--outline); font-size: 11px; font-weight: 700; line-height: 18px;
-            animation: bounce .4s ease-in-out infinite alternate;
-        }
-        @keyframes bounce { to { transform: translateY(-3px); } }
-
-        /* ══════════ 聊天抽屜 ══════════ */
-        .chat {
-            position: fixed; z-index: 30; top: 50%; right: var(--edge);
-            width: var(--chat-w); height: min(900px, calc(100dvh - var(--edge) * 2));
-            font-size: clamp(13.5px, .45vw + 8px, 17px);
-            transform: translate(calc(100% + 40px), -50%);
-            display: flex; flex-direction: column; overflow: hidden;
-            border-radius: 24px; border-width: 3px;
-            transition: transform .4s cubic-bezier(.175, .885, .32, 1.275);
-        }
-        .chat.open { transform: translate(0, -50%); }
-        .chat-header {
-            display: flex; justify-content: space-between; align-items: center; flex: none;
-            padding: 13px 16px; background: var(--outline); color: var(--cream-hi);
-            font-size: .9em; font-weight: 700; letter-spacing: .2em;
-        }
-        .chat-header button { background: none; border: 0; color: inherit; cursor: pointer; padding: 2px; display: grid; }
-        .chat-header button:hover { color: var(--yellow); }
-        .chat-header .ico { width: 18px; height: 18px; }
-        .chat-messages {
-            flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 15px;
-            display: flex; flex-direction: column; gap: 10px; font-size: 1em;
-        }
-        .chat-messages::-webkit-scrollbar { width: 6px; }
-        .chat-messages::-webkit-scrollbar-thumb { background: var(--cream-lo); border-radius: 9px; }
-        .chat-msg { line-height: 1.65; word-break: break-word; white-space: pre-line; }
-        .chat-hint { color: var(--text-sub); text-align: center; font-size: 13px; }
-        .mention-highlight {
-            background: var(--sky); padding: 1px 8px; border-radius: 999px;
-            font-weight: 700; border: 1.5px solid var(--outline);
-        }
-        .chat-quick {
-            display: flex; gap: 8px; padding: 10px 12px; flex: none; overflow-x: auto;
-            background: var(--cream); border-top: 2px solid var(--outline);
-        }
-        .chat-quick button {
-            flex: none; padding: 5px 11px; font-size: 1.1em; border-radius: 999px;
-            border: 2px solid var(--outline); background: var(--cream-hi); cursor: pointer;
-        }
-        .chat-quick button:hover { background: var(--yellow); }
-        .chat-input { display: flex; gap: 9px; padding: 12px; flex: none; background: var(--cream); border-top: 2px solid var(--outline); }
-        .chat-input-wrap { position: relative; flex: 1; min-width: 0; }
-        .chat-input input {
-            width: 100%; padding: 11px 12px; border-radius: 14px; border: 2px solid var(--outline);
-            background: #fff; font: inherit; font-size: max(16px, 1em); outline: none;
-        }
-        .chat-input input:focus { background: var(--cream-hi); }
-        .chat-input > button {
-            flex: none; padding: 0 16px; border-radius: 14px; border: 2px solid var(--outline);
-            background: var(--red); color: var(--cream-hi); font-weight: 700; letter-spacing: .06em; cursor: pointer;
-        }
-        .mention-list {
-            position: absolute; bottom: calc(100% + 6px); left: 0; right: 0; max-height: 130px; overflow-y: auto;
-            background: #fff; border: 2px solid var(--outline); border-radius: 14px;
-        }
-        .mention-list div { padding: 8px 12px; cursor: pointer; font-size: 13px; font-weight: 600; border-bottom: 1px solid rgba(27,27,27,.14); }
-        .mention-list div:last-child { border-bottom: 0; }
-        .mention-list div:hover { background: var(--yellow); }
-
-        /* ══════════ 提示與結算 ══════════ */
-        .toast {
-            position: fixed; z-index: 50; left: 50%; top: calc(var(--hud-top) + 8px); transform: translateX(-50%);
-            padding: 9px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; white-space: nowrap;
-            background: var(--outline); color: var(--cream-hi); box-shadow: var(--lift);
-        }
-        .fade-enter-active, .fade-leave-active { transition: opacity .2s, transform .2s; }
-        .fade-enter-from, .fade-leave-to { opacity: 0; }
-
-        .modal-back {
-            position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px;
-            background: rgba(27, 40, 55, .45);
-        }
-        .result { width: min(380px, 100%); padding: 22px 22px 18px; text-align: center; border-radius: 24px; border-width: 3px; }
-        .result h2 { margin: 0; font-family: var(--font-display); font-size: 34px; font-weight: 900; letter-spacing: .04em; }
-        .result .reason { margin: 4px 0 14px; font-size: 13px; color: var(--text-sub); }
-        .rank { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 6px;
-                border: 2px solid var(--outline); border-radius: 14px; background: var(--cream); text-align: left; }
-        .rank.first { background: var(--yellow); }
-        .rank .pos { font-family: var(--font-display); font-size: 20px; width: 22px; }
-        .rank .token { width: 26px; height: 26px; }
-        .rank .nm { flex: 1; font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .rank .pts { font-family: var(--font-display); font-size: 20px; }
-        .rank .pts small { font-family: var(--font-sans); font-size: 11px; margin-left: 2px; }
-        .result-actions { display: flex; gap: 8px; margin-top: 14px; }
-        .result-actions button {
-            flex: 1; padding: 11px 8px; border-radius: 14px; border: var(--bw) solid var(--outline);
-            background: var(--cream-hi); font-weight: 700; cursor: pointer;
-        }
-        .result-actions button.primary { background: var(--red); color: var(--cream-hi); }
-        .result-actions button:hover { transform: translateY(-2px); }
-
-        /* ══════════ 響應式 ══════════ */
-        /* 很矮的橫向螢幕（手機橫拿）：按鈕縮小、聊天室改用整個高度 */
-        @media (max-height: 480px) and (min-width: 721px) {
-            :root { --btn: 46px; --edge: 10px; }
-            .chat { height: calc(100dvh - 20px); }
-        }
-
-        /* 手機：上方兩列（徽章／按鈕列＋對手列），下方操作區撐滿寬度 */
-        @media (max-width: 720px) {
-            .spec-chip { padding: 0 10px; }
-            :root { --btn: 48px; --hud-top: 120px; --hud-bot: 12px; --edge: 12px; --side: 12px; }
-            .hud-top { top: 66px; }
-            .phase-flag { margin-top: 0; padding-top: 8px; }
-            .hud-br { top: var(--edge); bottom: auto; right: var(--edge); flex-direction: row; gap: 8px; }
-            .big-btn.fs { display: none; }
-            .big-btn.hud-toggle { width: var(--btn); height: var(--btn); }
-            .stage { left: 0; right: 0; }
-            .chat { right: 12px; width: calc(100vw - 24px); height: 80dvh; }
-        }
-    </style>
+    <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
     <div class="vignette"></div>
@@ -593,11 +177,12 @@
         </transition>
     </div>
 
-    <script>
+    <script type="module">
+    import * as Rules from './js/shared/rules.js';
     const { createApp, reactive, computed, ref, nextTick } = Vue;
 
     const API_URL = 'https://wallgo-play.onrender.com';
-    const boardSize = 13;
+    const boardSize = Rules.BOARD_SIZE;
     const TURN_TIME_LIMIT = 90;
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -613,7 +198,7 @@
     const session = JSON.parse(localStorage.getItem('wallGoSession'));
     const myName = session ? session.name : '';
 
-    const allColors = ['red', 'blue', 'yellow', 'green'];
+    const allColors = Rules.ALL_COLORS;
     const colorMap = {
         red:    { color: 'var(--color-red)',    icon: '🔴', text: '紅色' },
         blue:   { color: 'var(--color-blue)',   icon: '🔵', text: '藍色' },
@@ -663,7 +248,7 @@
 
     // ── 小工具 ──
     const plain = (x) => JSON.parse(JSON.stringify(x));
-    const key = (r, c) => `${r},${c}`;
+    const key = Rules.key;
     function currentColor() {
         if (S.phase === 'game_over') return null;
         return S.phase === 'placement' ? S.placementQueue[S.turnIndex] : S.movementOrder[S.turnIndex];
@@ -680,41 +265,15 @@
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => { S.toast = ''; }, 2200);
     }
-    function getPieceIndexAt(r, c) { return S.pieces.findIndex(p => p.r === r && p.c === c); }
-
-    // ── 規則 2 ──
-    // 放置：每人先放圓形、再放方形
-    function nextShape(color) {
-        if (S.rules !== 2) return undefined;
-        return S.pieces.some(p => p.color === color && p.shape === 'circle') ? 'square' : 'circle';
-    }
-    function newPiece(color, r, c) {
-        const shape = nextShape(color);
-        return shape ? { color, r, c, shape } : { color, r, c };
-    }
-    // 選中棋子這一步能去哪：方形棋第二步只能沿第一步的方向（或停在原地結束）
-    function movesForPiece(p) {
-        const moves = getValidMoves(p.r, p.c);
-        if (S.rules !== 2 || p.shape !== 'square' || S.stepsTaken !== 1 || !S.moveDir) return moves;
-        const [dr, dc] = S.moveDir;
-        return moves.filter(m => (m.r === p.r && m.c === p.c) || (m.r === p.r + 2 * dr && m.c === p.c + 2 * dc));
-    }
-    // 可以拆的牆：規則 1 是自己蓋的牆；規則 2 是自己棋子四周的牆（不論誰蓋的）
-    function breakableWalls(color) {
-        const out = new Set();
-        if (S.rules !== 2) {
-            S.walls.forEach((v, k) => { if (v === color) out.add(k); });
-            return out;
-        }
-        S.pieces.forEach(p => {
-            if (p.color !== color) return;
-            for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-                const k = key(p.r + dr, p.c + dc);
-                if (S.walls.has(k)) out.add(k);
-            }
-        });
-        return out;
-    }
+    // 棋規都在 js/shared/rules.js；這裡只是把目前的對局狀態 S 帶進去
+    const getPieceIndexAt = (r, c) => Rules.pieceIndexAt(S, r, c);
+    const getValidMoves = (r, c) => Rules.validMoves(S, r, c);
+    const getValidWalls = (r, c) => Rules.validWalls(S, r, c);
+    const nextShape = (color) => Rules.nextShape(S, color);
+    const newPiece = (color, r, c) => Rules.newPiece(S, color, r, c);
+    const movesForPiece = (p) => Rules.movesForPiece(S, p);
+    const breakableWalls = (color) => Rules.breakableWalls(S, color);
+    const evaluateBoard = (forColor) => Rules.evaluateBoard(S, forColor);
 
     function saveHistoryStep() {
         moveHistory.push({ pieces: plain(S.pieces), walls: Array.from(S.walls.entries()) });
@@ -972,20 +531,6 @@
         checkAITurn();
     }
 
-    function evaluateBoard(forColor) {
-        let score = 0, aiMobility = 0, oppMobility = 0;
-        S.pieces.forEach(p => {
-            const movesCount = getValidMoves(p.r, p.c).length;
-            if (p.color === forColor) {
-                aiMobility += movesCount;
-                score -= (Math.abs(p.r - 6) + Math.abs(p.c - 6)) * 0.5;
-            } else oppMobility += movesCount;
-        });
-        score += aiMobility * 2.5 - oppMobility;
-        if (aiMobility === 0) score -= 10000;
-        return score;
-    }
-
     function checkAITurn() {
         if (S.phase === 'game_over' || isOnline) { S.isProcessing = false; return; }
         const cc = currentColor();
@@ -1103,87 +648,17 @@
         if (!isOnline) checkAITurn();
     }
 
-    function getValidMoves(startR, startC) {
-        const out = [];
-        for (let r = 0; r < boardSize; r += 2) {
-            for (let c = 0; c < boardSize; c += 2) {
-                const dr = Math.abs(startR - r), dc = Math.abs(startC - c);
-                if ((dr === 2 && dc === 0) || (dr === 0 && dc === 2) || (dr === 0 && dc === 0)) {
-                    if (getPieceIndexAt(r, c) === -1 || (r === startR && c === startC)) {
-                        if (!hasWallBetween(startR, startC, r, c)) out.push({ r, c });
-                    }
-                }
-            }
-        }
-        return out;
-    }
-    function hasWallBetween(r1, c1, r2, c2) {
-        if (r1 === r2 && c1 === c2) return false;
-        return S.walls.has(key((r1 + r2) / 2, (c1 + c2) / 2));
-    }
-    function getValidWalls(pR, pC) {
-        const out = [];
-        for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-            const wr = pR + dr, wc = pC + dc;
-            if (wr >= 0 && wr < boardSize && wc >= 0 && wc < boardSize && !S.walls.has(key(wr, wc))) out.push({ r: wr, c: wc });
-        }
-        return out;
-    }
-
     function autoCheckEndGame(forceCalculate = false) {
         if (S.phase === 'placement' && !forceCalculate) return;
-        let gameOver = forceCalculate;
-        const scores = {}; S.activeColors.forEach(c => scores[c] = 0);
-        const visited = new Set();
-        let hasMixedTerritory = false;
-        const territories = new Map();
-
-        for (let r = 0; r < boardSize; r += 2) {
-            for (let c = 0; c < boardSize; c += 2) {
-                if (visited.has(key(r, c))) continue;
-                const queue = [{ r, c }]; visited.add(key(r, c));
-                let regionSize = 0; const colorsInRegion = new Set(); const regionCells = [];
-                while (queue.length > 0) {
-                    const cur = queue.shift(); regionSize++; regionCells.push(cur);
-                    const pIdx = getPieceIndexAt(cur.r, cur.c);
-                    if (pIdx !== -1) colorsInRegion.add(S.pieces[pIdx].color);
-                    for (const [dr, dc, wr, wc] of [[-2, 0, -1, 0], [2, 0, 1, 0], [0, -2, 0, -1], [0, 2, 0, 1]]) {
-                        const nr = cur.r + dr, nc = cur.c + dc;
-                        if (nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize
-                            && !S.walls.has(key(cur.r + wr, cur.c + wc)) && !visited.has(key(nr, nc))) {
-                            visited.add(key(nr, nc)); queue.push({ r: nr, c: nc });
-                        }
-                    }
-                }
-                if (colorsInRegion.size > 1) hasMixedTerritory = true;
-                else if (colorsInRegion.size === 1) {
-                    const color = [...colorsInRegion][0];
-                    scores[color] += regionSize;
-                    regionCells.forEach(cell => territories.set(key(cell.r, cell.c), color));
-                }
-            }
-        }
-        S.territories = territories;
-
-        let anyPlayerCanMove = false;
-        if (!gameOver) {
-            outer:
-            for (const color of S.activeColors) {
-                if (S.playersInfo[color].hasBreaker && breakableWalls(color).size) { anyPlayerCanMove = true; break; }
-                for (const p of S.pieces.filter(p => p.color === color)) {
-                    for (const m of getValidMoves(p.r, p.c)) {
-                        if (getValidWalls(m.r, m.c).length > 0) { anyPlayerCanMove = true; break outer; }
-                    }
-                }
-            }
-            if (!hasMixedTerritory || !anyPlayerCanMove) gameOver = true;
-        }
-        if (!gameOver) return;
+        const check = Rules.checkGameOver(S, S.activeColors, S.playersInfo);
+        const { scores } = check;
+        S.territories = check.territories;
+        if (!forceCalculate && !check.over) return;
 
         clearInterval(clockInterval); clockInterval = null;
         S.phase = 'game_over'; S.isProcessing = false;
         const reason = forceCalculate ? '因有玩家單步思考超時而強制提前結算'
-            : (!anyPlayerCanMove ? '所有玩家皆無法再進行合法操作（僵局）' : '所有陣營已被完全封閉切割');
+            : (check.reason === 'stalemate' ? '所有玩家皆無法再進行合法操作（僵局）' : '所有陣營已被完全封閉切割');
 
         const sorted = [...S.activeColors].sort((a, b) => scores[b] - scores[a]);
         const ranking = sorted.map((c, i) => ({ color: c, pos: i + 1, score: scores[c], name: getDisplayName(c) + suffixOf(c) }));

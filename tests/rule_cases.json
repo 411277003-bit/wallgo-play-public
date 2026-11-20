@@ -1,0 +1,102 @@
+{
+  "_說明": "JS（tests/rules.test.mjs）與 Python 版棋規共用的測試盤面。walls 用 [\"r,c\", 顏色]；位置一律寫成 \"r,c\"，比對時不看順序。",
+  "cases": [
+    {
+      "name": "規則1：角落空盤，可走右、下或原地",
+      "rules": 1, "pieces": [{"color": "red", "r": 0, "c": 0}], "walls": [],
+      "check": "movesForPiece", "piece": 0,
+      "expect": ["0,0", "0,2", "2,0"]
+    },
+    {
+      "name": "規則1：牆擋住上方",
+      "rules": 1, "pieces": [{"color": "red", "r": 4, "c": 4}], "walls": [["3,4", "blue"]],
+      "check": "movesForPiece", "piece": 0,
+      "expect": ["4,2", "4,4", "4,6", "6,4"]
+    },
+    {
+      "name": "規則1：不能走到別人棋子上",
+      "rules": 1, "pieces": [{"color": "red", "r": 4, "c": 4}, {"color": "blue", "r": 4, "c": 6}], "walls": [],
+      "check": "movesForPiece", "piece": 0,
+      "expect": ["2,4", "4,2", "4,4", "6,4"]
+    },
+    {
+      "name": "蓋牆：角落已有一道牆，只剩右邊",
+      "rules": 1, "pieces": [{"color": "red", "r": 0, "c": 0}], "walls": [["1,0", "red"]],
+      "check": "validWalls", "at": [0, 0],
+      "expect": ["0,1"]
+    },
+    {
+      "name": "規則2：方形棋第一步四個方向都可以",
+      "rules": 2, "pieces": [{"color": "red", "r": 4, "c": 4, "shape": "square"}], "walls": [],
+      "stepsTaken": 0, "moveDir": null,
+      "check": "movesForPiece", "piece": 0,
+      "expect": ["2,4", "4,2", "4,4", "4,6", "6,4"]
+    },
+    {
+      "name": "規則2：方形棋第二步只能繼續直走（或停下）",
+      "rules": 2, "pieces": [{"color": "red", "r": 4, "c": 6, "shape": "square"}], "walls": [],
+      "stepsTaken": 1, "moveDir": [0, 1],
+      "check": "movesForPiece", "piece": 0,
+      "expect": ["4,6", "4,8"]
+    },
+    {
+      "name": "規則2：方形棋前方有牆，只能停下",
+      "rules": 2, "pieces": [{"color": "red", "r": 4, "c": 6, "shape": "square"}], "walls": [["4,7", "blue"]],
+      "stepsTaken": 1, "moveDir": [0, 1],
+      "check": "movesForPiece", "piece": 0,
+      "expect": ["4,6"]
+    },
+    {
+      "name": "規則2：圓形棋第二步可以轉彎",
+      "rules": 2, "pieces": [{"color": "red", "r": 4, "c": 6, "shape": "circle"}], "walls": [],
+      "stepsTaken": 1, "moveDir": [0, 1],
+      "check": "movesForPiece", "piece": 0,
+      "expect": ["2,6", "4,4", "4,6", "4,8", "6,6"]
+    },
+    {
+      "name": "規則1：破牆只能破自己蓋的",
+      "rules": 1, "pieces": [{"color": "red", "r": 0, "c": 0}], "walls": [["1,0", "blue"], ["5,4", "red"]],
+      "check": "breakableWalls", "color": "red",
+      "expect": ["5,4"]
+    },
+    {
+      "name": "規則2：破牆只能破自己棋子旁邊的（誰蓋的都可以）",
+      "rules": 2, "pieces": [{"color": "red", "r": 0, "c": 0, "shape": "circle"}], "walls": [["1,0", "blue"], ["5,4", "red"]],
+      "check": "breakableWalls", "color": "red",
+      "expect": ["1,0"]
+    },
+    {
+      "name": "規則2：第一顆放圓形",
+      "rules": 2, "pieces": [], "walls": [],
+      "check": "nextShape", "color": "red",
+      "expect": "circle"
+    },
+    {
+      "name": "規則2：放過圓形後放方形",
+      "rules": 2, "pieces": [{"color": "red", "r": 0, "c": 0, "shape": "circle"}], "walls": [],
+      "check": "nextShape", "color": "red",
+      "expect": "square"
+    },
+    {
+      "name": "規則1：沒有形狀",
+      "rules": 1, "pieces": [], "walls": [],
+      "check": "nextShape", "color": "red",
+      "expect": null
+    },
+    {
+      "name": "結束判定：兩色在同一區，還沒結束",
+      "rules": 1, "colors": ["red", "blue"],
+      "pieces": [{"color": "red", "r": 0, "c": 0}, {"color": "blue", "r": 12, "c": 12}], "walls": [],
+      "check": "checkGameOver",
+      "expect": {"over": false}
+    },
+    {
+      "name": "結束判定：紅色被圍在角落，各自獨佔",
+      "rules": 1, "colors": ["red", "blue"],
+      "pieces": [{"color": "red", "r": 0, "c": 0}, {"color": "blue", "r": 12, "c": 12}],
+      "walls": [["1,0", "red"], ["0,1", "blue"]],
+      "check": "checkGameOver",
+      "expect": {"over": true, "reason": "sealed", "scores": {"red": 1, "blue": 48}}
+    }
+  ]
+}
