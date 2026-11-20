@@ -8,6 +8,8 @@ import { executeAILogic, checkAITurn } from './ai.js';
 const { API_URL, TURN_TIME_LIMIT } = window.WALLGO_CONFIG;
 
 let moveHistory = [];
+let finishedGameId = null;   // 這個頁面已經結算過的那一局，避免重新整理／重連後又結算、又存一次戰績
+const newGameId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 let clockInterval = null;
 
 export function saveHistoryStep() {
@@ -26,6 +28,7 @@ export function resetGame(isManual) {
     S.playersInfo = info; S.playerTimes = times;
     S.phase = 'placement'; S.turnIndex = 0; S.selectedPieceIndex = -1; S.movedPieceIndex = -1; S.stepsTaken = 0; S.moveDir = null;
     S.isProcessing = false; S.result = null; S.showResult = false;
+    S.gameId = newGameId();   // 連線對局會在收到伺服器狀態時換成全房共用的編號
 
     moveHistory = [];
     saveHistoryStep();
@@ -187,6 +190,9 @@ export function autoCheckEndGame(forceCalculate = false) {
 
     clearInterval(clockInterval); clockInterval = null;
     S.phase = 'game_over'; S.isProcessing = false;
+    // 同一局只結算一次：伺服器之後再送來同一個結束盤面（重連、重新整理）時，不再重複公告與存檔
+    if (finishedGameId && finishedGameId === S.gameId && S.result) return;
+    finishedGameId = S.gameId;
     const reason = forceCalculate ? '因有玩家單步思考超時而強制提前結算'
         : (check.reason === 'stalemate' ? '所有玩家皆無法再進行合法操作（僵局）' : '所有陣營已被完全封閉切割');
 
@@ -202,6 +208,7 @@ export function autoCheckEndGame(forceCalculate = false) {
         winner: winners.join(' & '),
         winScore: maxScore,
         details: details.join(' | '),
+        game_id: S.gameId,          // 伺服器用（玩家, game_id）去重，同一局每人只留一筆
         replayData: JSON.stringify(moveHistory)
     };
     const uniqueKey = historyRecord.winScore + '_' + historyRecord.details.replace(/\s+/g, '');

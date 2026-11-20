@@ -1,5 +1,6 @@
 """房間裡的對局：建立初始狀態、逾時代打、結束判定、倒數計時。"""
 import random
+import uuid
 
 import gevent
 
@@ -22,6 +23,7 @@ def init_game_state(room_code, player_count, rules=1):
     state = {
         'rules': 2 if rules == 2 else 1,   # 1 = 原版；2 = 每人一圓一方、破牆限棋子旁
         'moveDir': None,
+        'gameId': uuid.uuid4().hex,   # 這一局的編號，全房共用；存戰績時用來去重
         'phase': 'placement',
         'turnIndex': 0,
         'activeColors': activeColors,

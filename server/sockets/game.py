@@ -81,6 +81,8 @@ def handle_game_action(data):
     state['selectedPieceIndex'] = data.get('selectedPieceIndex')
     state['stepsTaken'] = data.get('stepsTaken')
     state['moveDir'] = data.get('moveDir')
+    if data.get('gameId'):
+        state['gameId'] = data['gameId']   # 有人按「重新開始」時換成新的一局
     if data.get('rules') in (1, 2):
         state['rules'] = data['rules']
     state['playersInfo'] = data.get('playersInfo', state['playersInfo'])

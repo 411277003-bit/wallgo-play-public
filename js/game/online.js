@@ -27,7 +27,8 @@ export function broadcastGameState() {
         playerTimes: plain(S.playerTimes),
         activeColors: plain(S.activeColors),
         placementQueue: plain(S.placementQueue),
-        movementOrder: plain(S.movementOrder)
+        movementOrder: plain(S.movementOrder),
+        gameId: S.gameId
     }, (ack) => { if (ack && ack.version > lastVersion) lastVersion = ack.version; });
 }
 
@@ -52,6 +53,7 @@ export function applyServerState(data) {
     S.selectedPieceIndex = data.selectedPieceIndex;
     S.stepsTaken = data.stepsTaken;
     S.moveDir = data.moveDir || null;
+    if (data.gameId) S.gameId = data.gameId;
     if (data.rules === 1 || data.rules === 2) S.rules = data.rules;
     if (data.playersInfo) S.playersInfo = data.playersInfo;
     if (data.playerTimes) S.playerTimes = data.playerTimes;

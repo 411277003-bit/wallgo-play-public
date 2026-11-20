@@ -48,6 +48,7 @@ export const S = reactive({
     spectator: wantSpectate, spectators: [],
     rules: urlRules,      // 1 = 原版；2 = 每人一圓一方，方形只能直走，破牆限棋子四周
     moveDir: null,        // 規則 2 方形棋第一步的方向 [dr, dc]，第二步只能同方向
+    gameId: '',           // 這一局的編號：連線時由伺服器發、全房共用；存戰績時用來避免同一局存兩次
     toast: '', result: null, showResult: false, confirmReset: false, confirmBreak: false
 });
 
