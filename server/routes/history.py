@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify
 
 from server.db import history_col
+from server.history_dedupe import dedupe
 
 bp = Blueprint(__name__.rsplit('.', 1)[-1], __name__)
 
@@ -32,29 +33,22 @@ def save_history():
 def get_history():
     data = request.json
     user_id = data.get('user_id')
-    records = list(history_col.find({"user_id": user_id}, {"_id": 0}))
+    # 顯示時合併同一局的重複紀錄（資料庫不動），規則見 server/history_dedupe.py
+    records = dedupe(list(history_col.find({"user_id": user_id}, {"_id": 0})))
     return jsonify({"success": True, "history": records})
 
 @bp.route('/api/global_stats', methods=['GET'])
 def global_stats():
     """全站統整數據：所有玩家的對局數、參與人數、圍地紀錄與最新戰報。
-    連線對局每位參與者都會各存一筆，同一局只算一次：
-    有 game_id 的用 game_id 去重；舊紀錄沒有 game_id，退回用（日期、勝利格數、去掉「(你)」的明細）。"""
+    連線對局每位參與者都會各存一筆，同一局只算一次（server/history_dedupe.py）。"""
     records = list(history_col.find({}, {"replayData": 0}).sort("_id", -1))
-    games, latest = {}, []
-    for r in records:
-        details = (r.get("details") or "").replace("(你)", "")
-        key = ("game", r["game_id"]) if r.get("game_id") else (r.get("date"), r.get("winScore"), details)
-        if key in games:
-            continue
-        games[key] = r
-        if len(latest) < 5:
-            latest.append({
-                "date": r.get("date"),
-                "winner": (r.get("winner") or "").replace("(你)", ""),
-                "winScore": r.get("winScore"),
-            })
-    scores = [g.get("winScore") for g in games.values() if isinstance(g.get("winScore"), (int, float))]
+    games = dedupe(records)   # 同一局只算一次，規則見 server/history_dedupe.py
+    latest = [{
+        "date": r.get("date"),
+        "winner": (r.get("winner") or "").replace("(你)", ""),
+        "winScore": r.get("winScore"),
+    } for r in games[:5]]
+    scores = [g.get("winScore") for g in games if isinstance(g.get("winScore"), (int, float))]
     return jsonify({
         "success": True,
         "totalGames": len(games),

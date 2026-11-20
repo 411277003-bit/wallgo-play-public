@@ -55,6 +55,7 @@
 │   ├── extensions.py       # 共用的 socketio 物件
 │   ├── db.py               # MongoDB 連線（環境變數 MONGO_URI）
 │   ├── state.py            # 記憶體裡的房間與連線資料
+│   ├── history_dedupe.py   # 戰績顯示去重：game_id，或舊紀錄的格數＋明細＋2 分鐘內
 │   ├── routes/             # HTTP API：auth（帳號）、history（戰績）、friends（好友）
 │   ├── sockets/            # 即時事件：rooms（房間、觀戰）、game（入房、同步、聊天）、voice（語音信令）
 │   └── engine/
@@ -65,7 +66,8 @@
 │   ├── rule_cases.json     # ★ JS 與 Python 共用的棋規測試盤面
 │   ├── rules.test.mjs      # 測 js/shared/rules.js
 │   ├── test_rules.py       # 測 server/engine/rules.py
-│   └── test_server.py      # 模擬玩家與觀戰者，測房間、同步、語音信令、重啟補回
+│   ├── test_server.py      # 模擬玩家與觀戰者，測房間、同步、語音信令、重啟補回
+│   └── test_history_dedupe.py  # 戰績顯示去重（同一局只算一次）
 │
 ├── assets/                 # 背景音樂、音效
 └── ai-training/            # 獨立的 AlphaZero 訓練專案（目前未被前端引用）
@@ -127,6 +129,7 @@ python app.py
 node tests/rules.test.mjs      # 前端棋規（不用安裝套件）
 python tests/test_rules.py     # 後端棋規（不用安裝套件）
 python tests/test_server.py    # 房間／同步／語音信令（需先 pip install -r requirements.txt，不需要 MongoDB）
+python tests/test_history_dedupe.py   # 戰績去重（不用安裝套件）
 ```
 
 改棋規時，在 `tests/rule_cases.json` 加一個盤面案例，前後端兩支測試都要通過。
