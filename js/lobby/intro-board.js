@@ -473,13 +473,17 @@ function drawWall(key, info, now){
   const col=C.p[info.p], T=WALL_T, D=WALL_D, d=D*g;
   const j = dir==='H' ? joltAt(x+0.5,y) : joltAt(x,y+0.5);
 
-  /* footprint 精確貼齊格線、長度就是整整一格，不做任何內縮 ——
-     相鄰的牆底面才會首尾相接、頂面也同樣相接，中間不會空出洞。
+  /* 長度往兩端各多伸出半個牆厚（T）：
+     - L 型轉角：橫牆與直牆會一起蓋住交叉點那一小塊正方形，不再缺一角
+     - 一直線相接：兩段頭尾重疊，前一段的斜切端面被後一段的頂面蓋掉，看起來是一整條
+     碰到棋盤邊緣就不再往外伸，免得牆頭戳進外框。
      動畫過程中頂面由 base 往左上升起，看起來就是牆浮出棋盤。 */
   if(dir==='H'){
-    slab(x+j.ox, y-T+j.oy, x+1+j.ox, y+T+j.oy, d, col.wallSide, col.wall, j.z);
+    const x0=Math.max(x-T,0), x1=Math.min(x+1+T,N);
+    slab(x0+j.ox, y-T+j.oy, x1+j.ox, y+T+j.oy, d, col.wallSide, col.wall, j.z);
   } else {
-    slab(x-T+j.ox, y+j.oy, x+T+j.ox, y+1+j.oy, d, col.wallSide, col.wall, j.z);
+    const y0=Math.max(y-T,0), y1=Math.min(y+1+T,N);
+    slab(x-T+j.ox, y0+j.oy, x+T+j.ox, y1+j.oy, d, col.wallSide, col.wall, j.z);
   }
 }
 
@@ -524,7 +528,8 @@ function draw(now){
   }
   drawBoard();
   const items=[];
-  walls.forEach((v,k)=>{ const [x,y,d]=k.split(','); items.push({d:+y+(d==='V'?1:0), fn:()=>drawWall(k,v,now)}); });
+  /* 同一列的橫牆由左畫到右（+x*0.001），後畫的頂面才會蓋住前一段的端面，接縫不會露出來 */
+  walls.forEach((v,k)=>{ const [x,y,d]=k.split(','); items.push({d:+y+(d==='V'?1:+x*0.001), fn:()=>drawWall(k,v,now)}); });
   pieces.forEach(p=>items.push({d:p.dy+.55, fn:()=>drawPiece(p)}));
   items.sort((a,b)=>a.d-b.d).forEach(i=>i.fn());
   if(introHero) drawHammer(introHero, hammerAng, armAlpha);
