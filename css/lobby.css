@@ -180,14 +180,14 @@ body{
   color:var(--outline);font-variant-numeric:tabular-nums}
 .me-rings{display:flex;align-items:flex-start;gap:12px}
 .me-rings .rate-ring{margin:0}
-.rate-ring.wl{--num:28px}
-.rate-ring.wl .num{color:var(--outline)}
-.rate-ring.wl .num b:first-child{color:var(--orange)}
-.rate-ring.wl .num b:last-child{color:var(--ink-2)}
-.rate-ring.wl .num small{margin:0 2px;font-size:16px}
-/* 勝敗合成一圈：磚紅＝勝場段、深灰＝接在後面的敗場段，用平頭線帽讓兩段剛好接上 */
-.rate-ring.wl .arc{stroke-linecap:butt}
-.rate-ring .arc.lose{stroke:var(--ink-2)}
+/* 勝敗：純文字「55勝 / 17敗」，高度對齊旁邊的勝率圈 */
+.wl-text{margin:-6px 0 0;height:108px;display:flex;align-items:center;gap:2px;white-space:nowrap;
+  font-weight:700;color:var(--ink-2)}
+.wl-text b{font-family:var(--display);font-size:34px;font-weight:400;line-height:1;color:var(--orange);
+  font-variant-numeric:tabular-nums}
+.wl-text b.lose{color:var(--ink-2)}
+.wl-text small{font-size:14px;margin-left:1px}
+.wl-text i{font-style:normal;font-size:20px;margin:0 6px;color:var(--ink-2)}
 /* 全站戰績：左邊總對局，右邊三行統計 */
 .g-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;flex:1;min-width:0}
 .g-list li{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink-2)}
@@ -197,8 +197,6 @@ body{
 .card-stats .me-total b{font-size:38px}
 .card-stats .me-rings{gap:10px}
 .card-stats .rate-ring{--size:82px;--num:25px}
-.card-stats .rate-ring.wl{--num:20px}
-.card-stats .rate-ring.wl .num small{font-size:12px}
 @media (max-width:420px){
   .me-stats{flex-direction:column;align-items:flex-start}
   .me-total{display:flex;align-items:baseline;gap:10px}

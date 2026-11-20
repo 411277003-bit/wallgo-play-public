@@ -181,6 +181,9 @@ button { font-family: var(--font-sans); color: var(--outline); }
 .territory-green  { background-color: rgba(127, 169, 63, .42) !important; }
 
 .highlight { background-color: var(--sky) !important; cursor: pointer; box-shadow: inset 0 0 0 3px var(--outline); }
+/* 候選牆位只畫在自己那一段，兩端各內縮一點，四個角落不會互相重疊 */
+.wall-h.highlight-wall:not(.wall-placed)::after { left: .5cqw; right: .5cqw; }
+.wall-v.highlight-wall:not(.wall-placed)::after { top: .5cqw; bottom: .5cqw; }
 .highlight-wall:not(.wall-placed)::after { background: var(--pink); opacity: .75; outline: 2px solid var(--outline); outline-offset: -1px; }
 .highlight-wall:not(.wall-placed):hover::after { background: var(--yellow); opacity: 1; }
 /* 破牆階段：別人的牆變灰，自己的牆維持原色（就是可以拆的那些） */

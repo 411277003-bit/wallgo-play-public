@@ -225,20 +225,13 @@
     <div class="me-stats">
       <p class="me-total">總對局<b id="me-total">0</b></p>
       <div class="me-rings">
-        <figure class="rate-ring wl" aria-label="勝敗">
+        <!-- 勝敗：純文字「55勝 / 17敗」，不畫圓圈 -->
+        <p class="wl-text" aria-label="勝敗"><b id="me-wins">0</b><small>勝</small><i>/</i><b class="lose" id="me-loses">0</b><small>敗</small></p>
+        <figure class="rate-ring" aria-label="勝率">
           <svg viewBox="0 0 120 120" aria-hidden="true">
             <defs><linearGradient id="me-grad" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stop-color="var(--orange-hi)"/><stop offset="1" stop-color="var(--orange-deep)"/>
             </linearGradient></defs>
-            <circle class="track" cx="60" cy="60" r="50"/>
-            <circle class="arc" id="me-win-arc" cx="60" cy="60" r="50" pathLength="100" style="stroke:url(#me-grad)"/>
-            <circle class="arc lose" id="me-lose-arc" cx="60" cy="60" r="50" pathLength="100"/>
-          </svg>
-          <div class="num"><b id="me-wins">0</b><small>/</small><b id="me-loses">0</b></div>
-          <figcaption>勝／敗</figcaption>
-        </figure>
-        <figure class="rate-ring" aria-label="勝率">
-          <svg viewBox="0 0 120 120" aria-hidden="true">
             <circle class="track" cx="60" cy="60" r="50"/>
             <circle class="arc" id="me-rate-arc" cx="60" cy="60" r="50" pathLength="100" style="stroke:url(#me-grad)"/>
           </svg>
@@ -1408,15 +1401,10 @@ async function loadHistory(){
 
 function renderStats(total, wins){
   const rate = total ? Math.round((wins / total) * 100) : 0;
-  /* 弧長＝佔比；0 時圓頭線帽仍會畫出一個點，直接藏起來 */
-  const loseRate = total ? 100 - rate : 0;
-  for (const [id, pct] of [['me-rate-arc', rate], ['me-win-arc', rate], ['me-lose-arc', loseRate]]) {
-    const arc = document.getElementById(id);
-    arc.style.strokeDasharray = `${pct} 100`;
-    arc.style.opacity = pct ? 1 : 0;
-  }
-  /* 敗場段從勝場段的終點接著畫 */
-  document.getElementById('me-lose-arc').style.strokeDashoffset = -rate;
+  /* 弧長＝勝率；0 時圓頭線帽仍會畫出一個點，直接藏起來 */
+  const arc = document.getElementById('me-rate-arc');
+  arc.style.strokeDasharray = `${rate} 100`;
+  arc.style.opacity = rate ? 1 : 0;
 
   document.getElementById('me-total').innerText = total;
   document.getElementById('me-wins').innerText = wins;
