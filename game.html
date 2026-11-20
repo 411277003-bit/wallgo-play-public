@@ -69,8 +69,8 @@
 
         <!-- ═════ 右下：大方鈕 ═════ -->
         <div class="hud hud-br">
-            <!-- 全螢幕時三顆鈕預設收起，只留一顆展開鈕 -->
-            <template v-if="!(S.fullscreen && S.hudCollapsed)">
+            <!-- 連線對局全螢幕時，三顆鈕預設收起只留一顆展開鈕；單機只有全螢幕鈕，不需要收起 -->
+            <template v-if="!(isOnline && S.fullscreen && S.hudCollapsed)">
             <button class="big-btn fs" @click="toggleFullscreen" :title="S.fullscreen ? '離開全螢幕' : '全螢幕'" aria-label="全螢幕">
                 <svg v-if="!S.fullscreen" class="ico" viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>
                 <svg v-else class="ico" viewBox="0 0 24 24"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>
@@ -84,7 +84,7 @@
                 <span v-if="S.unread" class="badge">!</span>
             </button>
             </template>
-            <button v-if="S.fullscreen" class="big-btn hud-toggle" :class="{ 'mic-on': S.hudCollapsed && S.micOn }"
+            <button v-if="isOnline && S.fullscreen" class="big-btn hud-toggle" :class="{ 'mic-on': S.hudCollapsed && S.micOn }"
                     @click="S.hudCollapsed = !S.hudCollapsed"
                     :title="S.hudCollapsed ? '展開按鈕' : '收起按鈕'" :aria-label="S.hudCollapsed ? '展開按鈕' : '收起按鈕'"
                     :aria-expanded="!S.hudCollapsed">
