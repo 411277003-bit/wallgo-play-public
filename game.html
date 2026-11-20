@@ -989,6 +989,22 @@
         }
     }).mount('#app');
 
+    // 棋盤上緣要讓出上方 HUD（階段旗、回合列、按鈕）的實際高度。
+    // 這些元件會隨螢幕大小、字型載入而變高，用量的比用 CSS 猜準，才不會壓到棋盤。
+    function fitStageToHud() {
+        let bottom = 0;
+        document.querySelectorAll('.hud-top > *, .hud-tl > *, .hud-br > *').forEach(el => {
+            const r = el.getBoundingClientRect();
+            if (r.height && r.top < window.innerHeight / 3) bottom = Math.max(bottom, r.bottom);
+        });
+        if (bottom) document.documentElement.style.setProperty('--hud-top', `${Math.ceil(bottom + 10)}px`);
+    }
+    const hudObserver = new ResizeObserver(fitStageToHud);
+    document.querySelectorAll('.hud-top, .hud-tl, .hud-br').forEach(el => hudObserver.observe(el));
+    window.addEventListener('resize', fitStageToHud);
+    if (document.fonts) document.fonts.ready.then(fitStageToHud);
+    fitStageToHud();
+
     resetGame(false);
     </script>
 </body>
