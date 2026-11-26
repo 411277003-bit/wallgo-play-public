@@ -38,7 +38,8 @@ function createRoom(){
   const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
   const userInfo = { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar };
   currentRoomCode = roomCode;
-  socket.emit('create_room', { room_code: roomCode, user_info: userInfo, rules: selectedRule });
+  // 房號撞到別人的房間時，伺服器會換一個新的，以 room_created 回傳的房號為準
+  socket.emit('create_room', { room_code: roomCode, user_info: userInfo, rules: selectedRule, token: currentUser.token });
 }
 
 function joinRoom(){
@@ -46,7 +47,7 @@ function joinRoom(){
   if (roomCode.length !== 4) return toast('請輸入 4 位數字的房間代碼！');
   const userInfo = { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar };
   currentRoomCode = roomCode;
-  socket.emit('join_room', { room_code: roomCode, user_info: userInfo });
+  socket.emit('join_room', { room_code: roomCode, user_info: userInfo, token: currentUser.token });
 }
 
 function spectateRoom(){
@@ -60,7 +61,7 @@ socket.on('spectate_ok', (data) => {
 
 function leaveRoom(){
   if (currentRoomCode) {
-    socket.emit('leave_room', { room_code: currentRoomCode, user_id: currentUser.id });
+    socket.emit('leave_room', { room_code: currentRoomCode });
     currentRoomCode = null;
   }
   openRoomModal();

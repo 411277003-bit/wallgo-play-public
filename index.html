@@ -29,11 +29,11 @@
       <div id="form-login" class="form active">
         <div class="field">
           <label>Player ID</label>
-          <input type="text" id="login-id" placeholder="e.g. #1234">
+          <input type="text" id="login-id" placeholder="e.g. #1234" maxlength="17">
         </div>
         <div class="field">
           <label>Password</label>
-          <input type="password" id="login-pwd" placeholder="Enter your password">
+          <input type="password" id="login-pwd" placeholder="Enter your password" maxlength="64">
         </div>
         <a class="linky" onclick="handleForgotPassword()">Forgot password?</a>
         <button class="btn gold" onclick="performLogin()">Enter Lobby</button>
@@ -42,11 +42,11 @@
       <div id="form-register" class="form">
         <div class="field">
           <label>Nickname</label>
-          <input type="text" id="reg-name" placeholder="e.g. WallBreaker">
+          <input type="text" id="reg-name" placeholder="e.g. WallBreaker" maxlength="20">
         </div>
         <div class="field">
           <label>Password</label>
-          <input type="password" id="reg-pwd" placeholder="Choose a password you'll remember">
+          <input type="password" id="reg-pwd" placeholder="At least 4 characters" maxlength="64">
         </div>
         <button class="btn gold" onclick="performRegister()">Sign Up &amp; Log In</button>
       </div>
@@ -137,9 +137,10 @@
 <div class="scrim" id="forgot-pwd-modal">
   <div class="modal">
     <h3>Reset</h3><p class="sub">Reset Password</p>
-    <p class="hint" style="margin:0 0 16px">Enter your Player ID and a new password.</p>
-    <div class="field"><label>Player ID</label><input type="text" id="forgot-pwd-id" placeholder="e.g. #1234"></div>
-    <div class="field"><label>New Password</label><input type="password" id="forgot-pwd-new" placeholder="Enter a new password"></div>
+    <p class="hint" style="margin:0 0 16px">Enter your Player ID, the recovery code you got when signing up, and a new password.</p>
+    <div class="field"><label>Player ID</label><input type="text" id="forgot-pwd-id" placeholder="e.g. #1234" maxlength="17"></div>
+    <div class="field"><label>Recovery Code</label><input type="text" id="forgot-pwd-code" placeholder="e.g. 7F3A-91C2" maxlength="20" autocomplete="off"></div>
+    <div class="field"><label>New Password</label><input type="password" id="forgot-pwd-new" placeholder="At least 4 characters" maxlength="64"></div>
     <div class="btn-row">
       <button class="btn gold" onclick="resetPassword()">Reset</button>
       <button class="close" onclick="closeModal('forgot-pwd-modal')">Cancel</button>
@@ -208,7 +209,7 @@
     <button class="modal-x" onclick="closeModal('friends-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h3>Friends</h3><p class="sub">我的好友</p>
     <div class="joinbar">
-      <input type="text" id="add-friend-input" placeholder="#1234" style="font-size:16px;letter-spacing:.16em">
+      <input type="text" id="add-friend-input" placeholder="#1234" maxlength="17" style="font-size:16px;letter-spacing:.16em">
       <button class="btn" onclick="sendFriendRequest()">發送</button>
     </div>
     <div id="friend-list-render" style="margin-top:6px">
@@ -265,7 +266,7 @@
     <button class="modal-x" onclick="closeModal('profile-modal')" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h3>Profile</h3><p class="sub" id="profile-id">編輯個人資料</p>
     <div class="field"><label>玩家頭像（單一字母或 Emoji）</label><input type="text" id="input-avatar" maxlength="2"></div>
-    <div class="field"><label>玩家暱稱</label><input type="text" id="input-name"></div>
+    <div class="field"><label>玩家暱稱</label><input type="text" id="input-name" maxlength="20"></div>
     <button class="btn gold" style="margin-top:18px" onclick="saveProfile()">儲存修改</button>
   </div>
 </div>

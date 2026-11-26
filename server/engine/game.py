@@ -148,9 +148,9 @@ def check_end_game(room_code):
     if state['phase'] == 'placement':
         return
     result = check_game_over(state)
+    state['territories'] = [[k, c] for k, c in result['territories'].items()]
     if result['over']:
         state['phase'] = 'game_over'
-        state['territories'] = [[k, c] for k, c in result['territories'].items()]
         if state.get('timer_job'):
             state['timer_job'].kill()
 

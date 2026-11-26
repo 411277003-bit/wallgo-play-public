@@ -43,6 +43,28 @@ document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
   if(a==='info')       openModal('info-modal');
 });
 
+/* ═════════ 呼叫後端 API ═════════
+   自動帶上登入 token；伺服器說登入失效（401）就登出，請玩家重新登入。
+   body 省略時用 GET。回傳伺服器的 JSON（失敗時也是 {success:false, message}）。 */
+async function api(path, body){
+  const headers = {};
+  if (currentUser && currentUser.token) headers.Authorization = 'Bearer ' + currentUser.token;
+  const opts = { headers };
+  if (body !== undefined) {
+    opts.method = 'POST';
+    headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(API_URL + path, opts);
+  const data = await res.json().catch(() => ({ success: false, message: `伺服器錯誤（${res.status}）` }));
+  if (res.status === 401 && currentUser) {
+    localStorage.removeItem('wallGoSession');
+    toast('登入已失效，請重新登入。');
+    setTimeout(() => location.reload(), 1500);
+  }
+  return data;
+}
+
 /* ═════════ 小工具 ═════════ */
 function esc(str){
   return String(str ?? '').replace(/[&<>"']/g, ch =>

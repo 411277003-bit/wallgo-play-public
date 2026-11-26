@@ -127,6 +127,16 @@ export function handleCellClick(r, c) {
     if (actionMade) {
         saveHistoryStep();
         broadcastGameState();
+        // 停下來的位置四周的牆位都被佔滿了（例如角落兩道牆都蓋好了）：沒有牆可以蓋，直接結束回合。
+        // 以前會卡在「建牆」階段沒東西可點，只能等 90 秒逾時（伺服器逾時代打也是這樣處理）。
+        if (S.phase === 'wall_building') {
+            const mp = S.pieces[S.movedPieceIndex];
+            if (!getValidWalls(mp.r, mp.c).length) {
+                showToast('四周已經沒有位置可以蓋牆，回合直接結束。');
+                endTurn();
+                return;
+            }
+        }
         if (!isOnline) checkAITurn();
     }
 }
@@ -218,11 +228,11 @@ export function autoCheckEndGame(forceCalculate = false) {
         localStorage.setItem('wallGoReplays', JSON.stringify(localReplays));
     } catch (e) { console.error('本地儲存空間不足', e); }
 
-    if (session && !S.spectator) {
-        historyRecord.user_id = session.id;
+    if (session && session.token && !S.spectator) {
+        // 玩家身分由伺服器從 token 判斷，不用（也不能）自己填 user_id
         fetch(`${API_URL}/api/save_history`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
             body: JSON.stringify(historyRecord)
         }).then(res => res.json()).catch(err => console.error('戰績上傳失敗', err));
     }

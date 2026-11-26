@@ -1,9 +1,10 @@
 // 連線對局：socket 連線、斷線重連重新入房、狀態同步、觀戰名單
 import '../config.js';
-import { roomCode, isOnline, wantSpectate, session, S, plain, key } from './state.js';
+import { roomCode, isOnline, wantSpectate, session, S, plain, key, showToast } from './state.js';
 import { appendChatMessage } from './chat.js';
 import { saveHistoryStep, ensureClock, autoCheckEndGame } from './flow.js';
 import { voiceOnJoined, onVoiceSignal } from './voice.js';
+import { netlog } from './netlog.js';
 const { API_URL } = window.WALLGO_CONFIG;
 
 export let socket = null;
@@ -11,7 +12,7 @@ let lastVersion = 0;   // 伺服器狀態版本，比這個舊的 update_board �
 
 export function broadcastGameState() {
     if (!isOnline) return;
-    socket.emit('game_action', {
+    const payload = {
         room_code: roomCode,
         pieces: plain(S.pieces),
         walls: Array.from(S.walls.entries()),
@@ -28,8 +29,23 @@ export function broadcastGameState() {
         activeColors: plain(S.activeColors),
         placementQueue: plain(S.placementQueue),
         movementOrder: plain(S.movementOrder),
-        gameId: S.gameId
-    }, (ack) => { if (ack && ack.version > lastVersion) lastVersion = ack.version; });
+        gameId: S.gameId,
+        myColor: S.myOnlineColor   // 只有伺服器重啟、房間要重建時才會用到（認領座位）
+    };
+    const id = netlog.sent(payload);   // 封包紀錄器：記下送出時間與大小
+    socket.emit('game_action', payload, (ack) => { netlog.ack(id, ack); onActionAck(ack); });
+}
+
+// 伺服器會用棋規檢查每一步；不合法（或跟伺服器的盤面對不上，例如剛好逾時被代打）
+// 就會回傳 error 和伺服器的正確盤面，這裡直接換成伺服器的版本
+function onActionAck(ack) {
+    if (!ack) return;
+    if (ack.error) {
+        showToast(`⚠️ ${ack.error}，已同步為伺服器的盤面`);
+        if (ack.state) { lastVersion = 0; applyServerState(ack.state); }
+        return;
+    }
+    if (ack.version > lastVersion) lastVersion = ack.version;
 }
 
 export function applyServerState(data) {
@@ -75,12 +91,16 @@ export function initOnline() {
     // 對手的棋步就再也收不到
     socket.on('connect', () => {
         socket.emit('join_game_room', {
-            room_code: roomCode, user_id: session && session.id,
-            user_name: session ? session.name : '訪客', spectate: wantSpectate
+            room_code: roomCode, token: session && session.token,
+            user_name: session ? session.name : '訪客', spectate: wantSpectate,
+            my_color: S.myOnlineColor   // 斷線重連時帶上原本的顏色（伺服器重啟後要靠它認回座位）
         });
     });
 
+    socket.on('disconnect', (reason) => netlog.disconnect(reason));
+
     socket.on('init_game', (data) => {
+        netlog.rejoined();
         if (data.my_color) S.myOnlineColor = data.my_color;
         if (data.spectator && !S.myOnlineColor) S.spectator = true;
         if (data.room_players && Object.keys(data.room_players).length) S.colorToName = data.room_players;
@@ -92,11 +112,12 @@ export function initOnline() {
         voiceOnJoined();
     });
 
-    socket.on('update_board', applyServerState);
+    socket.on('update_board', (data) => { netlog.recv('update_board', data); applyServerState(data); });
     socket.on('spectators_updated', (data) => { S.spectators = (data && data.names) || []; });
 
     // 伺服器是計時的權威，每秒校正一次剩餘秒數
     socket.on('sync_time', (data) => {
+        netlog.tick();
         if (data && data.playerTimes) S.playerTimes = data.playerTimes;
     });
 

@@ -11,11 +11,7 @@ async function openFriendList(){
 async function fetchFriends(){
   if (!currentUser) return;
   try {
-    const res = await fetch(`${API_URL}/api/get_friends`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUser.id })
-    });
-    const result = await res.json();
+    const result = await api('/api/get_friends', {});
     if (result.success) renderFriendsUI(result.friends, result.pending_sent, result.pending_received);
   } catch(e) {
     document.getElementById('friend-list-render').innerHTML = '<p class="empty" style="color:var(--rust)">載入失敗，請檢查連線。</p>';
@@ -33,8 +29,8 @@ function renderFriendsUI(friends, pendingSent, pendingReceived){
           <div class="ava">${esc(f.avatar)}</div>
           <div><div class="nm">${esc(f.name)}</div><div class="idz">${esc(f.id)}</div></div>
           <div class="act">
-            <button class="mini ok" onclick="handleFriendReq('${esc(f.id)}','accept')">同意</button>
-            <button class="mini no" onclick="handleFriendReq('${esc(f.id)}','reject')">拒絕</button>
+            <button class="mini ok" data-friend-action="accept" data-id="${esc(f.id)}">同意</button>
+            <button class="mini no" data-friend-action="reject" data-id="${esc(f.id)}">拒絕</button>
           </div>
         </div>`;
     });
@@ -64,7 +60,7 @@ function renderFriendsUI(friends, pendingSent, pendingReceived){
         <div class="pitem">
           <div class="ava">${esc(f.avatar)}</div>
           <div><div class="nm">${esc(f.name)}<span class="dot"></span></div><div class="idz">${esc(f.id)}</div></div>
-          <div class="act"><button class="mini" onclick="inviteFriend('${esc(f.id)}')">邀請對戰</button></div>
+          <div class="act"><button class="mini" data-friend-action="invite" data-id="${esc(f.id)}">邀請對戰</button></div>
         </div>`;
     });
     html += `</div>`;
@@ -74,6 +70,16 @@ function renderFriendsUI(friends, pendingSent, pendingReceived){
   document.getElementById('menu-friend-sub').innerText =
     `${friends.length} 位好友` + (pendingReceived.length ? ` ・ ${pendingReceived.length} 則待審核` : '');
 }
+
+/* 好友列表的按鈕：不把 ID 塞進 onclick 字串（ID 裡的引號會變成程式碼，造成 XSS），
+   改成放在 data-id 屬性，由這裡統一處理點擊；dataset 讀回來的永遠只是文字 */
+document.getElementById('friend-list-render').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-friend-action]');
+  if (!btn) return;
+  const id = btn.dataset.id, action = btn.dataset.friendAction;
+  if (action === 'invite') inviteFriend(id);
+  else handleFriendReq(id, action);
+});
 
 function inviteFriend(friendId){
   closeModal('friends-modal');
@@ -87,11 +93,7 @@ async function sendFriendRequest(){
   if (!targetId.startsWith('#')) return toast('ID 格式錯誤（需包含 #，例如 #1234）');
 
   try {
-    const res = await fetch(`${API_URL}/api/send_friend_request`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requester_id: currentUser.id, receiver_id: targetId })
-    });
-    const result = await res.json();
+    const result = await api('/api/send_friend_request', { receiver_id: targetId });
     toast(result.message);
     if (result.success) {
       document.getElementById('add-friend-input').value = '';
@@ -102,11 +104,7 @@ async function sendFriendRequest(){
 
 async function handleFriendReq(requesterId, action){
   try {
-    const res = await fetch(`${API_URL}/api/handle_friend_request`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requester_id: requesterId, receiver_id: currentUser.id, action: action })
-    });
-    const result = await res.json();
+    const result = await api('/api/handle_friend_request', { requester_id: requesterId, action: action });
     if (result.success) fetchFriends();
     else toast(result.message);
   } catch(e) { toast('連線失敗！'); }

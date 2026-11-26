@@ -9,11 +9,7 @@ async function loadHistory(){
   const listEl = document.getElementById('history-list');
 
   try {
-    const response = await fetch(`${API_URL}/api/get_history`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUser.id })
-    });
-    const result = await response.json();
+    const result = await api('/api/get_history', {});
     if (!result.success) return;
 
     const history = result.history;
@@ -100,10 +96,8 @@ async function loadGlobalStats(){
 async function clearHistory(){
   if (!confirm('確定要清除所有的歷史戰績嗎？雲端資料刪除後無法復原！')) return;
   try {
-    await fetch(`${API_URL}/api/clear_history`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUser.id })
-    });
+    const result = await api('/api/clear_history', {});
+    if (!result.success) return toast(result.message || '清除失敗');
     localStorage.removeItem('wallGoReplays');
     loadHistory();
     toast('已清除所有戰績紀錄');

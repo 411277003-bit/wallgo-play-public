@@ -11,6 +11,12 @@ gevent 的 monkey patch 一定要在其他任何 import 之前執行，所以這
 import gevent.monkey
 gevent.monkey.patch_all()
 
+import sys  # noqa: E402
+# Windows 中文環境的主控台是 cp950，印 emoji（✅ ❌ ⚠️）會讓伺服器在啟動時直接當掉
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, 'reconfigure'):
+        stream.reconfigure(encoding='utf-8', errors='replace')
+
 from server.app_factory import create_app  # noqa: E402
 from server.extensions import socketio      # noqa: E402
 
