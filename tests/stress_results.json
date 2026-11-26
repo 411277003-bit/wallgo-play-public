@@ -1,0 +1,136 @@
+{
+  "machine": {
+    "cpu_count": 14,
+    "processor": "Intel64 Family 6 Model 197 Stepping 2, GenuineIntel",
+    "python": "3.12.10",
+    "os": "Windows-11-10.0.26300-SP0"
+  },
+  "think_seconds": 0.3,
+  "seconds_per_level": 15.0,
+  "levels": [
+    {
+      "rooms": 10,
+      "clients": 20,
+      "setup_seconds": 0.4,
+      "actions": 555,
+      "accepted": 555,
+      "rejected": 0,
+      "timeouts": 0,
+      "games_finished": 0,
+      "throughput_per_s": 36.1,
+      "ack_ms": {
+        "p50": 4.82,
+        "p95": 7.67,
+        "p99": 10.81,
+        "max": 15.5
+      },
+      "broadcast_ms": {
+        "p50": 4.61,
+        "p95": 7.74,
+        "p99": 10.65
+      },
+      "server_mem_mb": {
+        "before": 60.9,
+        "after": 61.9
+      }
+    },
+    {
+      "rooms": 50,
+      "clients": 100,
+      "setup_seconds": 1.9,
+      "actions": 2760,
+      "accepted": 2760,
+      "rejected": 0,
+      "timeouts": 0,
+      "games_finished": 2,
+      "throughput_per_s": 179.0,
+      "ack_ms": {
+        "p50": 3.38,
+        "p95": 8.43,
+        "p99": 23.45,
+        "max": 47.08
+      },
+      "broadcast_ms": {
+        "p50": 3.23,
+        "p95": 8.33,
+        "p99": 25.11
+      },
+      "server_mem_mb": {
+        "before": 67.8,
+        "after": 68.7
+      }
+    },
+    {
+      "rooms": 100,
+      "clients": 200,
+      "setup_seconds": 3.8,
+      "actions": 5424,
+      "accepted": 5424,
+      "rejected": 0,
+      "timeouts": 0,
+      "games_finished": 0,
+      "throughput_per_s": 351.5,
+      "ack_ms": {
+        "p50": 3.11,
+        "p95": 10.56,
+        "p99": 35.76,
+        "max": 78.25
+      },
+      "broadcast_ms": {
+        "p50": 3.07,
+        "p95": 10.39,
+        "p99": 34.06
+      },
+      "server_mem_mb": {
+        "before": 77.4,
+        "after": 78.3
+      }
+    },
+    {
+      "rooms": 200,
+      "clients": 400,
+      "setup_seconds": 7.1,
+      "actions": 10451,
+      "accepted": 10451,
+      "rejected": 0,
+      "timeouts": 0,
+      "games_finished": 3,
+      "throughput_per_s": 677.3,
+      "ack_ms": {
+        "p50": 9.26,
+        "p95": 107.77,
+        "p99": 164.92,
+        "max": 333.5
+      },
+      "broadcast_ms": {
+        "p50": 9.74,
+        "p95": 120.14,
+        "p99": 176.92
+      },
+      "server_mem_mb": {
+        "before": 95.1,
+        "after": 95.6
+      }
+    }
+  ],
+  "collision": {
+    "requests": 300,
+    "distinct_rooms": 300,
+    "got_requested_code": 1
+  },
+  "server_mem_after_all_mb": 86.1,
+  "ai_move": {
+    "2_players": {
+      "samples": 47,
+      "mean_ms": 0.71,
+      "p95_ms": 1.39,
+      "max_ms": 1.42
+    },
+    "4_players": {
+      "samples": 48,
+      "mean_ms": 1.46,
+      "p95_ms": 2.73,
+      "max_ms": 3.72
+    }
+  }
+}

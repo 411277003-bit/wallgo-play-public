@@ -1,0 +1,84 @@
+{
+  "machine": {
+    "cpu_count": 14,
+    "processor": "Intel64 Family 6 Model 197 Stepping 2, GenuineIntel",
+    "python": "3.12.10",
+    "os": "Windows-11-10.0.26300-SP0"
+  },
+  "think_seconds": 0.3,
+  "seconds_per_level": 15.0,
+  "levels": [
+    {
+      "rooms": 300,
+      "clients": 600,
+      "setup_seconds": 13.4,
+      "actions": 6291,
+      "accepted": 6291,
+      "rejected": 0,
+      "timeouts": 0,
+      "games_finished": 0,
+      "throughput_per_s": 404.8,
+      "ack_ms": {
+        "p50": 192.3,
+        "p95": 461.82,
+        "p99": 649.12,
+        "max": 914.98
+      },
+      "broadcast_ms": {
+        "p50": 207.99,
+        "p95": 463.51,
+        "p99": 622.33
+      },
+      "server_mem_mb": {
+        "before": 104.4,
+        "after": 107.4
+      }
+    },
+    {
+      "rooms": 400,
+      "clients": 800,
+      "setup_seconds": 20.7,
+      "actions": 5211,
+      "accepted": 5211,
+      "rejected": 0,
+      "timeouts": 0,
+      "games_finished": 0,
+      "throughput_per_s": 332.9,
+      "ack_ms": {
+        "p50": 351.53,
+        "p95": 772.85,
+        "p99": 1017.63,
+        "max": 1545.99
+      },
+      "broadcast_ms": {
+        "p50": 356.51,
+        "p95": 792.42,
+        "p99": 1079.35
+      },
+      "server_mem_mb": {
+        "before": 129.4,
+        "after": 130.3
+      }
+    }
+  ],
+  "collision": {
+    "requests": 300,
+    "distinct_rooms": 300,
+    "got_requested_code": 1
+  },
+  "server_mem_after_all_mb": 106.2,
+  "ai_move": {
+    "2_players": {
+      "samples": 47,
+      "mean_ms": 1.37,
+      "p95_ms": 2.36,
+      "max_ms": 4.07
+    },
+    "4_players": {
+      "samples": 48,
+      "mean_ms": 2.95,
+      "p95_ms": 4.84,
+      "max_ms": 7.15
+    }
+  }
+}

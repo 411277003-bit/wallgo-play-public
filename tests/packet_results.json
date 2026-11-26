@@ -1,0 +1,198 @@
+{
+  "game_seconds": 58.3,
+  "actions": 1002,
+  "accepted": 1002,
+  "send_bytes": {
+    "n": 1002,
+    "mean": 645.79,
+    "p50": 638,
+    "p95": 797,
+    "max": 857,
+    "min": 443,
+    "stdev": 86.45
+  },
+  "send_bytes_by_phase": {
+    "placement": {
+      "n": 40,
+      "mean": 487.8,
+      "p50": 501,
+      "p95": 532,
+      "max": 532,
+      "min": 443,
+      "stdev": 32.92
+    },
+    "movement": {
+      "n": 742,
+      "mean": 652.14,
+      "p50": 643,
+      "p95": 797,
+      "max": 846,
+      "min": 528,
+      "stdev": 81.96
+    },
+    "wall_building": {
+      "n": 191,
+      "mean": 663.74,
+      "p50": 654,
+      "p95": 812,
+      "max": 857,
+      "min": 543,
+      "stdev": 80.28
+    },
+    "wall_breaking": {
+      "n": 29,
+      "mean": 582.83,
+      "p50": 576,
+      "p95": 668,
+      "max": 669,
+      "min": 548,
+      "stdev": 34.28
+    }
+  },
+  "send_bytes_by_walls": {
+    "0~9道牆": 595,
+    "10~19道牆": 735,
+    "20~29道牆": 829
+  },
+  "ack_bytes": {
+    "n": 1002,
+    "mean": 14.91,
+    "p50": 15,
+    "p95": 15,
+    "max": 16,
+    "min": 13,
+    "stdev": 0.36
+  },
+  "update_board_bytes": {
+    "n": 1011,
+    "mean": 788.59,
+    "p50": 749,
+    "p95": 1146,
+    "max": 1848,
+    "min": 427,
+    "stdev": 220.26
+  },
+  "sync_time_bytes": {
+    "n": 104,
+    "mean": 36,
+    "p50": 36,
+    "p95": 36,
+    "max": 36,
+    "min": 36,
+    "stdev": 0.0
+  },
+  "ack_rtt_ms": {
+    "n": 1002,
+    "mean": 6.17,
+    "p50": 6.08,
+    "p95": 9.09,
+    "max": 15.32,
+    "min": 1.67,
+    "stdev": 1.79
+  },
+  "broadcast_ms": {
+    "n": 1002,
+    "mean": 6.48,
+    "p50": 6.37,
+    "p95": 9.53,
+    "max": 16.19,
+    "min": 1.74,
+    "stdev": 1.87
+  },
+  "sync_interval_ms": {
+    "n": 29,
+    "mean": 1008.18,
+    "p50": 1007.31,
+    "p95": 1017.01,
+    "max": 1018.95,
+    "min": 1001.66,
+    "stdev": 5.08,
+    "over_1500ms": 0
+  },
+  "reconnect_ms": {
+    "n": 10,
+    "mean": 13.05,
+    "p50": 12.4,
+    "p95": 29.4,
+    "max": 29.4,
+    "min": 7.9,
+    "stdev": 6.12,
+    "state_ok": 10
+  },
+  "cheat": [
+    {
+      "case": "憑空多放一顆棋",
+      "accepted": false,
+      "reply": "資料格式錯誤：棋子資料不合法",
+      "ms": 3.7,
+      "resync_bytes": 692
+    },
+    {
+      "case": "把場上的牆全部拆掉",
+      "accepted": false,
+      "reply": "不合法的操作",
+      "ms": 3.8,
+      "resync_bytes": 692
+    },
+    {
+      "case": "棋子瞬移",
+      "accepted": false,
+      "reply": "不合法的操作",
+      "ms": 2.9,
+      "resync_bytes": 692
+    },
+    {
+      "case": "跳過自己的回合",
+      "accepted": false,
+      "reply": "不合法的操作",
+      "ms": 3.2,
+      "resync_bytes": 692
+    },
+    {
+      "case": "破牆權用完又改回來",
+      "accepted": false,
+      "reply": "不合法的操作",
+      "ms": 2.8,
+      "resync_bytes": 692
+    },
+    {
+      "case": "不是自己的回合卻送棋步",
+      "accepted": false,
+      "reply": "還沒輪到你",
+      "ms": 3.6,
+      "resync_bytes": 692
+    }
+  ],
+  "remote": {
+    "url": "https://wallgo-play.onrender.com",
+    "errors": 0,
+    "ws_rtt": {
+      "n": 30,
+      "mean": 234.28,
+      "p50": 210.73,
+      "p95": 395.78,
+      "max": 411.25,
+      "min": 164.12,
+      "stdev": 71.61
+    },
+    "first_http_ms": 1307.5,
+    "http": {
+      "n": 19,
+      "mean": 849.79,
+      "p50": 818.91,
+      "p95": 1049.72,
+      "max": 1049.72,
+      "min": 717.72,
+      "stdev": 111.84
+    },
+    "ws_connect": {
+      "n": 5,
+      "mean": 908.7,
+      "p50": 925.82,
+      "p95": 1044.64,
+      "max": 1044.64,
+      "min": 756.15,
+      "stdev": 121.67
+    }
+  }
+}
